@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "ecosystem": "HYDRA-UMC",
+  "name": "HYDRA-UMC-MQTT-BROKER",
+  "version": "0.0.2",
+  "role": "service",
+  "stack": "node",
+  "technologies": [
+    "Node.js",
+    "Aedes MQTT broker"
+  ],
+  "deployment_target": "cm5",
+  "maturity": "functional",
+  "family": "Industrial Gateway",
+  "parent": "HYDRA-UMC-GATEWAY-INDUSTRIAL",
+  "build": "npm install && npm run build.",
+  "notes": "Real MQTT broker over real TCP - a real Aedes v1.x async-listen() bug that silently rejected every client was found and fixed this same pass.",
+  "native_version": {
+    "file": "package.json",
+    "pattern": "\"version\":\\s*\"(\\d+)\\.(\\d+)\\.(\\d+)\""
+  }
+}

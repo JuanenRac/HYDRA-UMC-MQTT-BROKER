@@ -1,0 +1,216 @@
+<p align="center">
+  <img src="images/HYDRA_UMC_BANNER.svg" alt="HYDRA-UMC-MQTT-BROKER banner" width="100%">
+</p>
+
+# 📡 HYDRA-UMC-MQTT-BROKER
+
+<p align="center"><a href="README.md">🇺🇸 English</a> | 🇪🇸 <b>Español</b> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a></p>
+
+### 🚀 Puente de Telemetría Ligero para IoT e Integraciones Externas
+
+<p align="left">
+  <img src="https://img.shields.io/badge/Licencia-GPL%203.0-blue.svg" alt="GPL 3.0">
+  <img src="https://img.shields.io/badge/Protocolo-MQTT%20v5-orange.svg" alt="MQTT">
+  <img src="https://img.shields.io/badge/Función-Telemetría%20Pub%20%2F%20Sub-blue.svg" alt="PubSub">
+</p>
+
+---
+
+## 1. 🛠️ VISIÓN GENERAL TÉCNICA
+
+**HYDRA-UMC-MQTT-BROKER** proporciona una interfaz de mensajería asíncrona y ligera para el ecosistema HYDRA-UMC. Permite que dispositivos IoT externos, dashboards y sistemas de automatización del hogar (como Home Assistant) se suscriban a la telemetría del robot y publiquen comandos.
+
+Implementa el estándar MQTT v5, ofreciendo una distribución de datos de alta eficiencia con un overhead mínimo, lo que lo hace ideal para aplicaciones móviles o monitorización remota de bajo ancho de banda.
+
+### Características Clave:
+* 📡 **Telemetría Pub/Sub:** Distribución en menos de un milisegundo de ángulos de articulación, estados de herramienta y salud del sistema.
+* 🛠️ **Soporte de Descubrimiento:** mDNS integrado y auto-descubrimiento de Home Assistant para una configuración fácil.
+* 🔐 **Seguridad de Tópicos:** Control de acceso detallado (ACL) para leer y escribir en tópicos de robots específicos.
+* ⚡ **Soporte de Websockets:** MQTT-sobre-WebSockets integrado para clientes basados en navegador.
+
+---
+
+## 2. 🔄 ESTRUCTURA DE TÓPICOS MQTT
+
+```mermaid
+flowchart TD
+    HYDRA["HYDRA-SERVER"] --> PUB["Publicar MQTT"]
+    PUB --> TOPIC["hydra/swarm/robot_1/joints"]
+    PUB --> TOPIC2["hydra/swarm/robot_1/tool"]
+    SUB["Cliente Externo"] -- Suscribirse --> TOPIC
+    SUB -- Publicar Comando --> CMD["hydra/swarm/robot_1/cmd/jog"]
+    CMD --> HYDRA
+```
+
+---
+
+## 3. 🧱 ARQUITECTURA Y DECISIONES DE DISEÑO
+
+* **Por qué es hermano, no un submódulo, de HYDRA-UMC-GATEWAY-INDUSTRIAL.** Cada adaptador de protocolo es un proceso desplegable/reiniciable por separado - un problema en el broker nunca tumba los adaptadores de OPC-UA o MTConnect que corren junto a él.
+* **Por qué un broker MQTT real, en vez de solo un cliente publicando a uno externo.** Poseer el broker significa que el propio flujo de eventos de esta célula (cambios de estado de robot, alarmas) está disponible para cualquier suscriptor MQTT de la red de planta sin depender de que un broker externo, gestionado aparte, esté alcanzable.
+* **Por qué el punto de entrada solo imprime identidad/versión, y termina tras levantar un listener de health-check.** Etapa de andamiaje, mismo motivo que el propio README del padre - un broker real es de larga duración por naturaleza.
+* **Cómo encaja en el resto del ecosistema.** Un servicio hermano bajo HYDRA-UMC-GATEWAY-INDUSTRIAL - conecta el propio flujo de eventos de HYDRA-UMC-SERVER con temas MQTT reales.
+* **Aquí se encontró y arregló un bug real: el broker nunca aceptaba clientes de verdad.** Aedes 1.x movió la configuración de persistencia/mqemitter a un paso async explícito `broker.listen()` (un cambio real de API respecto a la forma de fábrica de la 0.x); sin él, un `CONNECT` real llegaba al broker por un socket TCP real pero se colgaba en silencio hasta que el propio timeout de connack del cliente saltaba - el broker parecía "arriba" (el puerto aceptaba conexiones) pero ningún cliente podía completar una sesión jamás. Encontrado con un cliente `mqtt` real haciendo timeout en los propios tests de este proyecto, no por inspección. `tests/server.test.ts` ahora conecta una librería de cliente MQTT real contra un broker real por un socket real - CONNECT, entrega de PUBLISH, aislamiento de temas y mensajes retenidos, todo probado de verdad.
+
+---
+
+## 📂 ESTRUCTURA DE DIRECTORIOS
+
+```text
+HYDRA-UMC-MQTT-BROKER/
+├── src/         # Código fuente (Node/TypeScript - Broker, Puente, Seguridad)
+├── docs/        # Documentación y catálogo de tópicos
+├── build/       # Salida compilada (npm run build)
+├── images/      # Medios y diagramas
+├── scripts/     # Scripts de utilidad (bump-version.mjs)
+└── README.md
+```
+
+Servicio de red puro, sin hardware propio - `hardware/`, `firmware/` y
+`os/` se podaron de la plantilla original del proyecto (ver la regla de
+poda en `SONNET/5.PLAN_EJECUCION_32_PROYECTOS_NUEVOS.txt`, documentación
+interna del ecosistema, aplicada a todo este lote).
+
+---
+
+## 🛠️ ENTORNO DE DESARROLLO
+
+### Requisitos
+- [Node.js](https://nodejs.org/) (v18 o superior recomendado)
+- npm
+
+### Instalación
+```bash
+npm install
+```
+
+### Modo Desarrollo
+Ejecuta el broker directamente con `tsx` (sin bundler):
+- **Windows:** doble clic en `dev.bat` o ejecutar `npm run dev`
+- **Linux/Mac:** ejecutar `./dev.sh` o `npm run dev`
+
+### Build de Producción
+Empaqueta el broker en un único archivo desplegable con esbuild:
+- **Windows:** doble clic en `build.bat` o ejecutar `npm run build`
+- **Linux/Mac:** ejecutar `./build.sh` o `npm run build`
+
+Luego arráncalo con:
+```bash
+npm start
+```
+
+El broker escucha en `0.0.0.0:1883` (MQTT/TCP plano, el puerto por defecto
+registrado en IANA) - apunta cualquier cliente MQTT (`mosquitto_sub`, Home
+Assistant, MQTT Explorer, ...) a `<host>:1883`.
+
+### Versionado
+Cada `npm run build` real incrementa automáticamente el `version` de
+`package.json` (`scripts/bump-version.mjs`, primer paso del script
+`build`) - un "cuentakilómetros" en base 10: patch +1 por build, con
+acarreo a minor (y de minor a major) al pasar de 9 en vez de llegar nunca
+a un segmento de dos dígitos (`0.0.9` -> `0.1.0`, no `0.0.10`).
+
+---
+
+## 🚀 HOJA DE RUTA
+* **Fase 1:** Implementación de OPC-UA Pub/Sub para intercambio de datos de alta velocidad y puente de protocolos heredados.
+* **Fase 2:** Clúster de Broker MQTT para gestión masiva de dispositivos IoT y alta concurrencia.
+* **Fase 3:** Soporte del adaptador MTConnect para integración de maquinaria CNC y PLC multi-vendedor.
+* **Fase 4:** Soporte para la especificación Sparkplug B para alineación con IoT industrial y puente de telemetría unificado.
+
+---
+
+## 🔗 Proyectos Relacionados
+
+Este proyecto forma parte de un ecosistema de robótica más amplio del mismo autor (JuanenRac / Electro Hobby 3D), que abarca firmware, software de control, nodos de IA y herramientas de flota. Vale la pena conocerlo, ya que una petición podría en realidad ser sobre uno de estos proyectos en vez de sobre este repositorio.
+
+### Familia
+
+**Padre:** **[HYDRA-UMC-GATEWAY-INDUSTRIAL](https://github.com/JuanenRac/HYDRA-UMC-GATEWAY-INDUSTRIAL)** — el padre de integración al que se conecta este adaptador MQTT.
+
+**Hermanos:**
+- **[HYDRA-UMC-OPCUA-SERVER](https://github.com/JuanenRac/HYDRA-UMC-OPCUA-SERVER)** — adaptador de protocolo hermano, mismo padre.
+- **[HYDRA-UMC-MTCONNECT-ADAPTER](https://github.com/JuanenRac/HYDRA-UMC-MTCONNECT-ADAPTER)** — adaptador de protocolo hermano, mismo padre.
+
+### Relación Directa (fuera de la familia)
+
+- **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** — la fuente del estado que expone este adaptador.
+
+### Resto del Ecosistema
+
+**Plataforma HYDRA-UMC** — la célula de micro-fábrica multi-robot
+- **[HYDRA-UMC](https://github.com/JuanenRac/HYDRA-UMC)** — la placa base CM5 + STM32H745 que orquesta hasta 8 brazos robóticos.
+- **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** — el backend Express/WebSocket con el que habla cada cliente de control.
+- **[HYDRA-UMC-STUDIO](https://github.com/JuanenRac/HYDRA-UMC-STUDIO)** — panel de control web, visualización 3D multi-robot.
+- **[HYDRA-UMC-ANDROID-CONTROL](https://github.com/JuanenRac/HYDRA-UMC-ANDROID-CONTROL)** — app de control Android por Wi-Fi/Bluetooth.
+- **[HYDRA-UMC-IOS-CONTROL](https://github.com/JuanenRac/HYDRA-UMC-IOS-CONTROL)** — app de control iOS/iPadOS construida en Flutter.
+- **[HYDRA-UMC-SUITE](https://github.com/JuanenRac/HYDRA-UMC-SUITE)** — centro de mando de enjambre de escritorio (Python/PySide6).
+- **[HYDRA-UMC-EDITOR-URDF](https://github.com/JuanenRac/HYDRA-UMC-EDITOR-URDF)** — editor de modelos URDF de escritorio para el catálogo de robots.
+- **[HYDRA-UMC-DSI](https://github.com/JuanenRac/HYDRA-UMC-DSI)** — interfaz táctil nativa para la pantalla DSI integrada.
+
+**Plataforma URTC** — el controlador de cabezal de herramienta que lleva cada brazo HYDRA-UMC
+- **[URTC](https://github.com/JuanenRac/URTC)** — controlador de cabezal de herramienta CAN, 25 perfiles de herramienta.
+- **[URTC-FLASHER](https://github.com/JuanenRac/URTC-FLASHER)** — herramienta de escritorio de flasheo CAN-OTA + SWD/JTAG.
+- **[URTC-TESTER](https://github.com/JuanenRac/URTC-TESTER)** — herramienta de escritorio de diagnóstico CAN en vivo.
+- **[URTC-WEB-STUDIO](https://github.com/JuanenRac/URTC-WEB-STUDIO)** — alternativa basada en navegador vía Web Serial API.
+
+**🎥 Vision AI Node (Hailo-8)**
+- [HYDRA-UMC-VISION-NODE](https://github.com/JuanenRac/HYDRA-UMC-VISION-NODE)
+- [HYDRA-UMC-VISION-STREAMER](https://github.com/JuanenRac/HYDRA-UMC-VISION-STREAMER)
+- [HYDRA-UMC-DETECTION-HEF](https://github.com/JuanenRac/HYDRA-UMC-DETECTION-HEF)
+- [HYDRA-UMC-SAFETY-ZONES](https://github.com/JuanenRac/HYDRA-UMC-SAFETY-ZONES)
+- [HYDRA-UMC-VISUAL-SERVOING-API](https://github.com/JuanenRac/HYDRA-UMC-VISUAL-SERVOING-API)
+
+**🧠 Cognitive AI Node (Hailo-10)**
+- [HYDRA-UMC-COGNITIVE-NODE](https://github.com/JuanenRac/HYDRA-UMC-COGNITIVE-NODE)
+- [HYDRA-UMC-VLA-ENGINE](https://github.com/JuanenRac/HYDRA-UMC-VLA-ENGINE)
+- [HYDRA-UMC-VOICE-UI](https://github.com/JuanenRac/HYDRA-UMC-VOICE-UI)
+- [HYDRA-UMC-SEMANTIC-PLANNER](https://github.com/JuanenRac/HYDRA-UMC-SEMANTIC-PLANNER)
+- [HYDRA-UMC-DOCS-QA](https://github.com/JuanenRac/HYDRA-UMC-DOCS-QA)
+
+**🐝 Orchestration & Swarm**
+- [HYDRA-UMC-ORCHESTRATOR](https://github.com/JuanenRac/HYDRA-UMC-ORCHESTRATOR)
+- [HYDRA-UMC-SWARM-SYNC](https://github.com/JuanenRac/HYDRA-UMC-SWARM-SYNC)
+- [HYDRA-UMC-PATH-PLANNER-3D](https://github.com/JuanenRac/HYDRA-UMC-PATH-PLANNER-3D)
+- [HYDRA-UMC-JOB-DISPATCHER](https://github.com/JuanenRac/HYDRA-UMC-JOB-DISPATCHER)
+- [HYDRA-UMC-NODE-HEALING](https://github.com/JuanenRac/HYDRA-UMC-NODE-HEALING)
+
+**🎮 Digital Twin & Simulation**
+- [HYDRA-UMC-TWIN](https://github.com/JuanenRac/HYDRA-UMC-TWIN)
+- [HYDRA-UMC-PHYSICS-REPLICA](https://github.com/JuanenRac/HYDRA-UMC-PHYSICS-REPLICA)
+- [HYDRA-UMC-HIL-BRIDGE](https://github.com/JuanenRac/HYDRA-UMC-HIL-BRIDGE)
+- [HYDRA-UMC-SYNTHETIC-DATA-GEN](https://github.com/JuanenRac/HYDRA-UMC-SYNTHETIC-DATA-GEN)
+
+**📊 Data & Analytics**
+- [HYDRA-UMC-DATALAKE](https://github.com/JuanenRac/HYDRA-UMC-DATALAKE)
+- [HYDRA-UMC-TELEMETRY-COLLECTOR](https://github.com/JuanenRac/HYDRA-UMC-TELEMETRY-COLLECTOR)
+- [HYDRA-UMC-ANOMALY-DETECTOR](https://github.com/JuanenRac/HYDRA-UMC-ANOMALY-DETECTOR)
+- [HYDRA-UMC-PRODUCTION-REPORTS](https://github.com/JuanenRac/HYDRA-UMC-PRODUCTION-REPORTS)
+
+**🛠️ Complementary Tools**
+- [URTC-SMART-RACK](https://github.com/JuanenRac/URTC-SMART-RACK)
+- [URTC-VISION-TOOL](https://github.com/JuanenRac/URTC-VISION-TOOL)
+- [HYDRA-UMC-WATCH](https://github.com/JuanenRac/HYDRA-UMC-WATCH)
+- [HYDRA-UMC-TOOL-CLI](https://github.com/JuanenRac/HYDRA-UMC-TOOL-CLI)
+- [HYDRA-UMC-DASHBOARD-AI](https://github.com/JuanenRac/HYDRA-UMC-DASHBOARD-AI)
+
+
+## 👤 AUTOR
+**JuanenRac** (Electro Hobby 3D)
+📧 electrohobby3d@gmail.com
+
+## 📜 LICENCIA
+GPL-3.0 - Ver archivo LICENSE para más detalles.
+
+## Proyectos relacionados
+
+> Canonical public ecosystem relationship map.
+
+**Direct integrations:**
+[HYDRA-UMC-OS](https://github.com/JuanenRac/HYDRA-UMC-OS) · [HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK) · [HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER) · [URTC](https://github.com/JuanenRac/URTC) · [HYDRA-UMC-GATEWAY-INDUSTRIAL](https://github.com/JuanenRac/HYDRA-UMC-GATEWAY-INDUSTRIAL) · [HYDRA-UMC-OPCUA-SERVER](https://github.com/JuanenRac/HYDRA-UMC-OPCUA-SERVER) · [HYDRA-UMC-MTCONNECT-ADAPTER](https://github.com/JuanenRac/HYDRA-UMC-MTCONNECT-ADAPTER)
+
+**Platform and contracts:**
+[HYDRA-UMC-OS](https://github.com/JuanenRac/HYDRA-UMC-OS) · [HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK)
+
+**Rest of the ecosystem:**
+All remaining public repositories are grouped by the seven ecosystem layers in the [JuanenRac ecosystem dashboard](https://juanenrac.github.io/JuanenRac/).

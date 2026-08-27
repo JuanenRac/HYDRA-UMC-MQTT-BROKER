@@ -1,0 +1,28 @@
+{
+  "name": "hydra-umc-mqtt-broker",
+  "private": true,
+  "version": "0.0.2",
+  "type": "module",
+  "description": "Lightweight MQTT v5 broker bridging HYDRA-UMC robot telemetry and commands to external IoT devices, dashboards and home-automation systems.",
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "build": "node scripts/bump-version.mjs && esbuild src/server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "start": "node dist/server.cjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "aedes": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "esbuild": "^0.28.2",
+    "mqtt": "^5.15.2",
+    "tsx": "^4.23.12",
+    "typescript": "~6.0.2",
+    "vitest": "^3.2.7"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}
