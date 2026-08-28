@@ -25,7 +25,8 @@ It implements the MQTT v5 standard, offering high-efficiency data distribution w
 ### Key Features:
 * 📡 **Pub/Sub Telemetry:** Sub-millisecond distribution of joint angles, tool states, and system health.
 * 🛠️ **Discovery Support:** Integrated mDNS and Home Assistant auto-discovery for easy setup.
-* 🔐 **Topic Security:** Fine-grained access control (ACL) for reading and writing specific robot topics.
+* 🔐 **Topic Security:** Real, verifiable per-client-ID-prefix ACL for reading and writing specific robot topics - a wildcard SUBSCRIBE can never grant broader access than its rule. *(implemented)*
+* 📏 **Payload Size Limit:** A real, opt-in cap on PUBLISH payload size, configurable via `MAX_PAYLOAD_BYTES`. *(implemented)*
 * ⚡ **Websockets Support:** Integrated MQTT-over-WebSockets for browser-based clients.
 
 ---
@@ -51,6 +52,9 @@ flowchart TD
 * **Why the entry point only prints identity/version, exits after a health-check listener comes up.** Andamiaje (scaffolding) stage, same reasoning as the parent's own README - a real broker is long-running by nature.
 * **How this fits the rest of the ecosystem.** A sibling service under HYDRA-UMC-GATEWAY-INDUSTRIAL - bridges HYDRA-UMC-SERVER's own event stream onto real MQTT topics.
 * **A real bug was found and fixed here: the broker never actually accepted clients.** Aedes 1.x moved persistence/mqemitter setup into an explicit async `broker.listen()` step (a real API change from the 0.x factory-function shape); without it, a real `CONNECT` reached the broker over a real TCP socket but hung silently until the client's own connack timeout fired - the broker looked "up" (the port accepted sockets) but no client could ever complete a session. Found via a real `mqtt` client timing out in this project's own tests, not by inspection. `tests/server.test.ts` now connects a real MQTT client library against a real broker over a real socket - CONNECT, PUBLISH delivery, topic isolation, and retained messages are all exercised for real.
+* **Why the topic ACL checks subscription *scope*, not just filter overlap.** A client's own SUBSCRIBE request is itself a filter and can carry `+`/`#` wildcards - naively checking "does the requested filter overlap the allowed one" would let a client subscribe with a broader wildcard (e.g. `hydra/robots/#`) than its rule actually grants (e.g. `hydra/robots/+/status`) and silently see topics it was never authorized for. `src/acl.ts`'s `isSubscriptionWithinScope()` does a real, segment-by-segment check instead - proven with real tests, including one where a robot's own wildcard SUBSCRIBE attempt to escalate its scope is denied.
+* **Why a denied PUBLISH closes the whole connection, not just NACKs one message.** This is Aedes's own real behavior (verified by running a real client against it, not assumed from the docs) - `authorizePublish` returning an error destroys the client's connection. The ACL/payload-limit design here works with that, not around it: a client that keeps getting disconnected for violating its ACL is a clear, loud signal to fix that device's config, not a silently-dropped message it might never notice.
+* **Why ACL/payload-limit config lives in env vars (`MQTT_ACL_JSON`/`MAX_PAYLOAD_BYTES`), not a config file.** Matches this project's existing `PORT` convention (see `.env.example`) and how it's actually deployed (systemd/Docker environment, not a mounted file) - `parseAclConfig()` fails startup loudly on malformed JSON rather than silently running unprotected.
 
 ---
 

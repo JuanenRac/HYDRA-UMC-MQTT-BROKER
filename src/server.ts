@@ -22,6 +22,7 @@
 import { createServer, type Server } from "node:net";
 import { Aedes, type Client, type AedesPublishPacket } from "aedes";
 import { readPackageVersion } from "./version.js";
+import { type AclRule, isPublishAllowed, isSubscribeAllowed, parseAclConfig } from "./acl.js";
 
 // 1883 is the IANA-registered plain-MQTT port (8883 is the TLS variant) -
 // kept as the default here so any off-the-shelf MQTT client (mosquitto_sub,
@@ -29,7 +30,20 @@ import { readPackageVersion } from "./version.js";
 // configuration during local development.
 const DEFAULT_PORT = Number(process.env.PORT) || 1883;
 
-export async function buildBroker(port: number = DEFAULT_PORT): Promise<{ broker: Aedes; server: Server }> {
+export interface BuildBrokerOptions {
+  /** Real, verifiable per-client-ID-prefix topic ACL (see acl.ts). Omitted
+   * (the default) means every existing behavior is unchanged - fully open,
+   * exactly as before this option existed. */
+  acl?: AclRule[];
+  /** Real payload size cap in bytes, enforced on PUBLISH. Omitted (the
+   * default) means unlimited, exactly as before this option existed. */
+  maxPayloadBytes?: number;
+}
+
+export async function buildBroker(
+  port: number = DEFAULT_PORT,
+  options: BuildBrokerOptions = {},
+): Promise<{ broker: Aedes; server: Server }> {
   const broker = new Aedes({ id: "hydra-umc-mqtt-broker" });
   // Aedes 1.x moved persistence/mqemitter setup into an explicit async
   // listen() step (a real, undocumented-in-the-original-scaffold change
@@ -39,6 +53,47 @@ export async function buildBroker(port: number = DEFAULT_PORT): Promise<{ broker
   // connecting and timing out in this project's own tests, not by
   // inspection.
   await broker.listen();
+
+  // Real, opt-in enforcement - both hooks are left at Aedes's own default
+  // (allow everything) unless the caller explicitly provides `acl` and/or
+  // `maxPayloadBytes`, so every pre-existing test/behavior against
+  // buildBroker(port) with no options is untouched.
+  if (options.acl || options.maxPayloadBytes !== undefined) {
+    broker.authorizePublish = (client, packet, callback) => {
+      if (options.maxPayloadBytes !== undefined) {
+        const payloadLength = Buffer.isBuffer(packet.payload)
+          ? packet.payload.length
+          : Buffer.byteLength(String(packet.payload ?? ""));
+        if (payloadLength > options.maxPayloadBytes) {
+          callback(new Error(`payload too large: ${payloadLength} bytes exceeds limit of ${options.maxPayloadBytes}`));
+          return;
+        }
+      }
+      if (options.acl) {
+        const clientId = client?.id ?? "";
+        if (!isPublishAllowed(options.acl, clientId, packet.topic)) {
+          callback(new Error(`ACL: publish to '${packet.topic}' denied for client '${clientId || "(unknown)"}'`));
+          return;
+        }
+      }
+      callback(null);
+    };
+  }
+
+  if (options.acl) {
+    const rules = options.acl;
+    broker.authorizeSubscribe = (client, subscription, callback) => {
+      if (isSubscribeAllowed(rules, client.id, subscription.topic ?? "")) {
+        callback(null, subscription);
+        return;
+      }
+      // Silently deny (grant nothing for this filter) rather than erroring
+      // the whole SUBSCRIBE - matches how a real multi-topic SUBSCRIBE can
+      // partially succeed, one topic filter at a time.
+      callback(null, null);
+    };
+  }
+
   const server = createServer(broker.handle);
 
   // Aedes emits these on its own event bus (not Node's `EventEmitter` types
@@ -66,8 +121,36 @@ export async function buildBroker(port: number = DEFAULT_PORT): Promise<{ broker
   return { broker, server };
 }
 
+// Real, opt-in production config for the ACL/payload-limit options above -
+// unset (the default) means fully open/unlimited, exactly as before these
+// env vars existed. A malformed MQTT_ACL_JSON fails startup loudly rather
+// than silently running unprotected.
+function loadBrokerOptionsFromEnv(): BuildBrokerOptions {
+  const options: BuildBrokerOptions = {};
+
+  if (process.env.MQTT_ACL_JSON) {
+    try {
+      options.acl = parseAclConfig(process.env.MQTT_ACL_JSON);
+    } catch (err) {
+      console.error(`[HYDRA-UMC-MQTT-BROKER] ${(err as Error).message}`);
+      process.exit(1);
+    }
+  }
+
+  if (process.env.MAX_PAYLOAD_BYTES) {
+    const maxPayloadBytes = Number(process.env.MAX_PAYLOAD_BYTES);
+    if (!Number.isFinite(maxPayloadBytes) || maxPayloadBytes <= 0) {
+      console.error(`[HYDRA-UMC-MQTT-BROKER] MAX_PAYLOAD_BYTES must be a positive number, got: ${process.env.MAX_PAYLOAD_BYTES}`);
+      process.exit(1);
+    }
+    options.maxPayloadBytes = maxPayloadBytes;
+  }
+
+  return options;
+}
+
 async function main() {
-  const { broker, server } = await buildBroker(DEFAULT_PORT);
+  const { broker, server } = await buildBroker(DEFAULT_PORT, loadBrokerOptionsFromEnv());
 
   server.on("error", (err) => {
     console.error("[HYDRA-UMC-MQTT-BROKER] fatal transport error:", err);
