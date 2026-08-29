@@ -21,6 +21,14 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.0.5] - Real ecosystem live-status opt-in
+
+- **`hydra-umc.project.json`** declares its real `service.port` (1883,
+  the default MQTT/TCP listen port) - HYDRA-UMC-SERVER's ecosystem
+  status endpoint now does a real TCP-connect probe against it instead
+  of only reporting static manifest metadata. No `health_path` (this is
+  a raw MQTT/TCP protocol, not HTTP), so the probe is a bare connect.
+
 ## [0.0.4] - Fixed after a live ecosystem bug audit
 
 - **`src/acl.ts`** - removed a source-comment reference to a private,

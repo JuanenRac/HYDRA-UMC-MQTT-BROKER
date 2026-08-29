@@ -1,7 +1,7 @@
 {
   "name": "hydra-umc-mqtt-broker",
   "private": true,
-  "version": "0.0.4",
+  "version": "0.0.5",
   "type": "module",
   "description": "Lightweight MQTT v5 broker bridging HYDRA-UMC robot telemetry and commands to external IoT devices, dashboards and home-automation systems.",
   "scripts": {
