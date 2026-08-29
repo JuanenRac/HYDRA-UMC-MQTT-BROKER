@@ -21,6 +21,15 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.0.4] - Fixed after a live ecosystem bug audit
+
+- **`src/acl.ts`** - removed a source-comment reference to a private,
+  unpublished internal notes file that should never have been cited from
+  public source. No functional change - the surrounding sentence (this
+  ACL is real access control for well-behaved clients, not yet real
+  security against an adversarial one) is unchanged, just self-contained
+  now.
+
 ## [0.0.3] - Real, verifiable topic ACL and payload size limit
 
 - **`src/acl.ts`** (new) - real, verifiable per-client-ID-prefix topic ACL. `topicMatchesFilter()` is a real MQTT wildcard matcher (`+`/`#`) for a concrete PUBLISH topic. `isSubscriptionWithinScope()` is the check the promotion audit specifically asked for: a client's own SUBSCRIBE request is itself a filter that can carry `+`/`#`, so a segment-by-segment scope check proves a requested filter (e.g. `hydra/robots/#`) can never match more than an allow-rule (e.g. `hydra/robots/+/status`) actually granted - a naive "does it overlap" check would have let a client escalate its own subscription into someone else's topics. `isPublishAllowed()`/`isSubscribeAllowed()` are real default-deny: a client with no matching rule, or a rule that doesn't list the exact topic, is denied.

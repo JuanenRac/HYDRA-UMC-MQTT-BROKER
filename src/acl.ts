@@ -7,10 +7,10 @@
 // their own topics" from a README promise into checkable config, matching
 // the promotion audit's own call for this ("wildcards can't grant broader
 // access by mistake"). Identity here is the MQTT client ID's prefix - a
-// real, honest v0 limitation, not TLS client certs or username/password
-// (see mejoras_futuras.txt): a client can claim any ID it likes over plain
-// TCP, so this ACL is real access CONTROL for well-behaved clients, not yet
-// real access SECURITY against an adversarial one.
+// real, honest v0 limitation, not TLS client certs or username/password: a
+// client can claim any ID it likes over plain TCP, so this ACL is real
+// access CONTROL for well-behaved clients, not yet real access SECURITY
+// against an adversarial one - real client authentication is future work.
 // =============================================================================
 
 export type TopicFilter = string;
