@@ -44,6 +44,12 @@ function connectClient(): Promise<MqttClient> {
 }
 
 describe("HYDRA-UMC-MQTT-BROKER (real MQTT protocol over real TCP)", () => {
+  it("rejects invalid listener ports before opening a broker", async () => {
+    await expect(buildBroker(-1)).rejects.toBeInstanceOf(RangeError);
+    await expect(buildBroker(65536)).rejects.toBeInstanceOf(RangeError);
+    await expect(buildBroker(1.5)).rejects.toBeInstanceOf(RangeError);
+  });
+
   it("accepts a real client CONNECT", async () => {
     const client = await connectClient();
     expect(client.connected).toBe(true);

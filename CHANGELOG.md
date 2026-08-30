@@ -33,6 +33,15 @@ semantic-versioning judgment calls:
 - **`.env.example`** documents secure deployment of `MQTT_AUTH_JSON` and why
   authenticated identity must be paired with the topic ACL.
 
+## [0.0.6] - Validate programmatic listener port and payload limits
+
+- **`buildBroker()`** - validated its own `port` (integer, 0..65535) and
+  `options.maxPayloadBytes` (positive safe integer) arguments before opening
+  the broker, matching the existing environment-variable validation path -
+  a caller embedding this broker programmatically got the same guarantees
+  as the CLI/env-driven path already had.
+- 51/51 tests passing.
+
 ## [0.0.5] - Real ecosystem live-status opt-in
 
 - **`hydra-umc.project.json`** declares its real `service.port` (1883,

@@ -24,6 +24,13 @@ const RULES: AclRule[] = [
   { clientIdPrefix: "dashboard-", publish: [], subscribe: ["hydra/#"] },
 ];
 
+describe("buildBroker configuration validation", () => {
+  it("rejects an invalid payload limit before accepting client traffic", async () => {
+    await expect(buildBroker(TEST_PORT, { maxPayloadBytes: 0 })).rejects.toBeInstanceOf(RangeError);
+    await expect(buildBroker(TEST_PORT, { maxPayloadBytes: Number.NaN })).rejects.toBeInstanceOf(RangeError);
+  });
+});
+
 let broker: Aedes;
 let server: Server;
 const clients: MqttClient[] = [];
@@ -36,8 +43,8 @@ async function startBroker(options: BuildBrokerOptions) {
 
 afterEach(async () => {
   await Promise.all(clients.splice(0).map((c) => new Promise<void>((resolve) => c.end(true, {}, () => resolve()))));
-  await new Promise<void>((resolve) => server.close(() => resolve()));
-  await new Promise<void>((resolve) => broker.close(() => resolve()));
+  if (server) await new Promise<void>((resolve) => server.close(() => resolve()));
+  if (broker) await new Promise<void>((resolve) => broker.close(() => resolve()));
 });
 
 function connectClient(clientId: string): Promise<MqttClient> {

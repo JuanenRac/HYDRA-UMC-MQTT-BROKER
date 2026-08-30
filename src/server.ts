@@ -52,6 +52,15 @@ export async function buildBroker(
   port: number = DEFAULT_PORT,
   options: BuildBrokerOptions = {},
 ): Promise<{ broker: Aedes; server: Server }> {
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    throw new RangeError("port must be an integer from 0 to 65535");
+  }
+  if (
+    options.maxPayloadBytes !== undefined &&
+    (!Number.isSafeInteger(options.maxPayloadBytes) || options.maxPayloadBytes <= 0)
+  ) {
+    throw new RangeError("maxPayloadBytes must be a positive safe integer");
+  }
   const broker = new Aedes({ id: "hydra-umc-mqtt-broker" });
   // Aedes 1.x moved persistence/mqemitter setup into an explicit async
   // listen() step (a real, undocumented-in-the-original-scaffold change
