@@ -9,8 +9,8 @@
 // access by mistake"). Identity here is the MQTT client ID's prefix - a
 // real, honest v0 limitation, not TLS client certs or username/password: a
 // client can claim any ID it likes over plain TCP, so this ACL is real
-// access CONTROL for well-behaved clients, not yet real access SECURITY
-// against an adversarial one - real client authentication is future work.
+// access CONTROL for well-behaved clients. Pair it with src/auth.ts's opt-in
+// MQTT credentials when client identity must be verified against adversaries.
 // =============================================================================
 
 export type TopicFilter = string;

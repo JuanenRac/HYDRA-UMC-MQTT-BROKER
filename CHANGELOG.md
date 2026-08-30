@@ -1,9 +1,8 @@
 # Changelog
 
-All notable work on **HYDRA-UMC-MQTT-BROKER** is summarized here, newest first. Full
-session-by-session detail (including dates) lives in a private,
-unpublished internal log - this file is public, so it intentionally
-omits calendar dates.
+All notable public work on **HYDRA-UMC-MQTT-BROKER** is summarized here,
+newest first. This changelog intentionally omits calendar dates and internal
+work-session detail.
 
 ## Versioning scheme
 
@@ -21,6 +20,19 @@ semantic-versioning judgment calls:
 
 ---
 
+## Unreleased - Opt-in authenticated MQTT sessions
+
+- **`src/auth.ts`** (new) - validates the `MQTT_AUTH_JSON` credential list,
+  rejects blank or duplicate user names at startup, and verifies matching
+  password buffers with Node's constant-time comparison primitive. Secrets
+  are never written to logs or errors.
+- **`src/server.ts`** - `buildBroker()` now accepts optional credentials and
+  rejects unauthenticated MQTT CONNECT attempts with the standard bad
+  username/password CONNACK outcome. Authentication remains opt-in so an
+  existing local broker stays compatible until explicitly configured.
+- **`.env.example`** documents secure deployment of `MQTT_AUTH_JSON` and why
+  authenticated identity must be paired with the topic ACL.
+
 ## [0.0.5] - Real ecosystem live-status opt-in
 
 - **`hydra-umc.project.json`** declares its real `service.port` (1883,
@@ -31,12 +43,8 @@ semantic-versioning judgment calls:
 
 ## [0.0.4] - Fixed after a live ecosystem bug audit
 
-- **`src/acl.ts`** - removed a source-comment reference to a private,
-  unpublished internal notes file that should never have been cited from
-  public source. No functional change - the surrounding sentence (this
-  ACL is real access control for well-behaved clients, not yet real
-  security against an adversarial one) is unchanged, just self-contained
-  now.
+- **`src/acl.ts`** - removed a dead source-comment reference. No functional
+  change - the surrounding security limitation remains self-contained.
 
 ## [0.0.3] - Real, verifiable topic ACL and payload size limit
 

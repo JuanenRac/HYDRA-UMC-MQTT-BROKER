@@ -26,6 +26,7 @@ Implementa lo standard MQTT v5, offrendo una distribuzione dei dati ad alta effi
 * 📡 **Telemetria Pub/Sub:** Distribuzione in meno di un millisecondo di angoli dei giunti, stati degli strumenti e salute del sistema.
 * 🛠️ **Supporto alla scoperta:** mDNS integrato e auto-scoperta di Home Assistant per una facile configurazione.
 * 🔐 **Sicurezza dei topic:** ACL reale e verificabile per prefisso di ID client per la lettura e la scrittura di topic robotici specifici - una SUBSCRIBE con carattere jolly non può mai concedere un accesso più ampio della propria regola. *(implementato)*
+* 🪪 **Autenticazione del client:** L'autenticazione MQTT reale e facoltativa con nome utente/password durante CONNECT (`MQTT_AUTH_JSON`) fornisce all'ACL un'identità di sessione verificata. *(implementata; da abbinare all'ACL)*
 * 📏 **Limite sulla dimensione del payload:** Un limite reale e opzionale sulla dimensione del payload di PUBLISH, configurabile tramite `MAX_PAYLOAD_BYTES`. *(implementato)*
 * ⚡ **Supporto Websocket:** MQTT-over-WebSockets integrato per client basati su browser.
 

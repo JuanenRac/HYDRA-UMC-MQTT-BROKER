@@ -26,6 +26,7 @@ It implements the MQTT v5 standard, offering high-efficiency data distribution w
 * 📡 **Pub/Sub Telemetry:** Sub-millisecond distribution of joint angles, tool states, and system health.
 * 🛠️ **Discovery Support:** Integrated mDNS and Home Assistant auto-discovery for easy setup.
 * 🔐 **Topic Security:** Real, verifiable per-client-ID-prefix ACL for reading and writing specific robot topics - a wildcard SUBSCRIBE can never grant broader access than its rule. *(implemented)*
+* 🪪 **Client Authentication:** Optional real MQTT username/password CONNECT authentication (`MQTT_AUTH_JSON`) gives the ACL a verified session identity. *(implemented; pair it with ACL)*
 * 📏 **Payload Size Limit:** A real, opt-in cap on PUBLISH payload size, configurable via `MAX_PAYLOAD_BYTES`. *(implemented)*
 * ⚡ **Websockets Support:** Integrated MQTT-over-WebSockets for browser-based clients.
 

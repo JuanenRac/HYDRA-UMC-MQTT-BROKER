@@ -23,6 +23,11 @@ import { createServer, type Server } from "node:net";
 import { Aedes, type Client, type AedesPublishPacket } from "aedes";
 import { readPackageVersion } from "./version.js";
 import { type AclRule, isPublishAllowed, isSubscribeAllowed, parseAclConfig } from "./acl.js";
+import {
+  type BrokerCredential,
+  credentialsAuthenticate,
+  parseCredentialsConfig,
+} from "./auth.js";
 
 // 1883 is the IANA-registered plain-MQTT port (8883 is the TLS variant) -
 // kept as the default here so any off-the-shelf MQTT client (mosquitto_sub,
@@ -38,6 +43,9 @@ export interface BuildBrokerOptions {
   /** Real payload size cap in bytes, enforced on PUBLISH. Omitted (the
    * default) means unlimited, exactly as before this option existed. */
   maxPayloadBytes?: number;
+  /** Opt-in MQTT CONNECT credentials. When supplied, a client must provide
+   * one matching username/password pair before any ACL is evaluated. */
+  credentials?: BrokerCredential[];
 }
 
 export async function buildBroker(
@@ -53,6 +61,20 @@ export async function buildBroker(
   // connecting and timing out in this project's own tests, not by
   // inspection.
   await broker.listen();
+
+  if (options.credentials) {
+    const credentials = options.credentials;
+    broker.authenticate = (_client, username, password, callback) => {
+      if (credentialsAuthenticate(credentials, username, password)) {
+        callback(null, true);
+        return;
+      }
+      // MQTT 3.1.1 CONNACK code 4: bad username or password. Aedes requires
+      // this property to reject CONNECT without accepting a usable session.
+      const error = Object.assign(new Error("MQTT authentication failed"), { returnCode: 4 as const });
+      callback(error, false);
+    };
+  }
 
   // Real, opt-in enforcement - both hooks are left at Aedes's own default
   // (allow everything) unless the caller explicitly provides `acl` and/or
@@ -121,7 +143,7 @@ export async function buildBroker(
   return { broker, server };
 }
 
-// Real, opt-in production config for the ACL/payload-limit options above -
+// Real, opt-in production config for the authentication/ACL/payload-limit options above -
 // unset (the default) means fully open/unlimited, exactly as before these
 // env vars existed. A malformed MQTT_ACL_JSON fails startup loudly rather
 // than silently running unprotected.
@@ -131,6 +153,15 @@ function loadBrokerOptionsFromEnv(): BuildBrokerOptions {
   if (process.env.MQTT_ACL_JSON) {
     try {
       options.acl = parseAclConfig(process.env.MQTT_ACL_JSON);
+    } catch (err) {
+      console.error(`[HYDRA-UMC-MQTT-BROKER] ${(err as Error).message}`);
+      process.exit(1);
+    }
+  }
+
+  if (process.env.MQTT_AUTH_JSON) {
+    try {
+      options.credentials = parseCredentialsConfig(process.env.MQTT_AUTH_JSON);
     } catch (err) {
       console.error(`[HYDRA-UMC-MQTT-BROKER] ${(err as Error).message}`);
       process.exit(1);

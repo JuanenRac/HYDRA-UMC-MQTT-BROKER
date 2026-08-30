@@ -14,7 +14,7 @@
   "family": "Industrial Gateway",
   "parent": "HYDRA-UMC-GATEWAY-INDUSTRIAL",
   "build": "npm install && npm run build.",
-  "notes": "Real MQTT broker over real TCP - a real Aedes v1.x async-listen() bug that silently rejected every client was found and fixed this same pass. Real, opt-in per-client-ID-prefix topic ACL (src/acl.ts) with a segment-by-segment scope check so a wildcard SUBSCRIBE can never grant broader access than its rule (MQTT_ACL_JSON), plus a real payload size cap (MAX_PAYLOAD_BYTES) - both verified against a real Aedes broker and real MQTT clients, not just unit math.",
+  "notes": "Real MQTT broker over real TCP. Optional MQTT CONNECT username/password authentication (MQTT_AUTH_JSON) gives the opt-in per-client-ID-prefix topic ACL (MQTT_ACL_JSON) a verified session identity; ACL scope checks prevent wildcard SUBSCRIBE escalation. An optional MAX_PAYLOAD_BYTES cap is enforced on every PUBLISH. All three controls are verified with real Aedes and MQTT clients, not only unit math.",
   "native_version": {
     "file": "package.json",
     "pattern": "\"version\":\\s*\"(\\d+)\\.(\\d+)\\.(\\d+)\""
