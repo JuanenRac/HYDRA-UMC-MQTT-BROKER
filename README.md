@@ -23,6 +23,7 @@
 It implements the MQTT v5 standard, offering high-efficiency data distribution with minimal overhead, making it ideal for mobile apps or low-bandwidth remote monitoring.
 
 ### Key Features:
+* 🔌 **External Machine Bridges:** `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/`-PRINTER3D`/`-ROS2` each reach this broker over their own `hydra/bridges/<name>/...` topics - see `docs/BRIDGE_TOPICS.md`. *(implemented)*
 * 📡 **Pub/Sub Telemetry:** Sub-millisecond distribution of joint angles, tool states, and system health.
 * 🛠️ **Discovery Support:** Integrated mDNS and Home Assistant auto-discovery for easy setup.
 * 🔐 **Topic Security:** Real, verifiable per-client-ID-prefix ACL for reading and writing specific robot topics - a wildcard SUBSCRIBE can never grant broader access than its rule. *(implemented)*

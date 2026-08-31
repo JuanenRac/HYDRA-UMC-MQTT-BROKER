@@ -37,6 +37,21 @@ semantic-versioning judgment calls:
 - **`.env.example`** documents secure deployment of `MQTT_AUTH_JSON` and why
   authenticated identity must be paired with the topic ACL.
 
+## [0.0.8] - External machine bridge topic catalog
+
+- **`docs/BRIDGE_TOPICS.md`** (new) - the real, shared `hydra/bridges/
+  <name>/...` topic convention `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/
+  `-PRINTER3D`/`-ROS2` now all use to reach this broker (each ships its
+  own `mqtt_transport.py`, per the ecosystem's own "MQTT via the real
+  broker, real commands included" decision) - the shared `cmd/job` gate
+  every bridge answers identically, and each bridge's own per-topic real
+  commands (never inventing authority beyond what each bridge's Python
+  API already had).
+- **`.env.example`** - a real `MQTT_ACL_JSON` example scoping all 5
+  bridges to their own `hydra/bridges/<name>/#` namespace, keyed by each
+  bridge's own real `run_forever()` client ID default - commented out by
+  default, same opt-in convention as the existing ACL example.
+
 ## [0.0.7] - Fixed the Docker image: MODULE_NOT_FOUND on every real run
 
 - **`Dockerfile`'s runtime stage never installed dependencies** - real bug
