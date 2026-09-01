@@ -139,6 +139,7 @@ This project is part of a larger robotics ecosystem by the same author (JuanenRa
 ### Directly Related (outside the family)
 
 - **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** — the source of the state this adapter exposes.
+- **[HYDRA-UMC-BRIDGE-CNC](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-CNC)**, **[-LASER](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-LASER)**, **[-OPENPNP](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-OPENPNP)**, **[-PRINTER3D](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-PRINTER3D)**, **[-ROS2](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-ROS2)** — each ships its own `mqtt_transport.py` reaching this broker over its own `hydra/bridges/<name>/...` topics; see `docs/BRIDGE_TOPICS.md` in this repo for the real, shared topic catalog.
 
 ### Rest of the Ecosystem
 
