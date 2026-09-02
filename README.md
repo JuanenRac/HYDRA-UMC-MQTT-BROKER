@@ -65,10 +65,12 @@ flowchart TD
 ```text
 HYDRA-UMC-MQTT-BROKER/
 ├── src/         # Source code (Node/TypeScript - Broker, Bridge, Security)
+├── tests/       # Vitest suite - ACL, auth, and broker/bridge behavior
 ├── docs/        # Documentation and topic catalog
 ├── build/       # Compiled output (npm run build)
 ├── images/      # Media and diagrams
 ├── scripts/     # Utility scripts (bump-version.mjs)
+├── tools/       # ci_validate.py - manifest/CHANGELOG/docs validation used by CI
 └── README.md
 ```
 
