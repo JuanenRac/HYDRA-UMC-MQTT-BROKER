@@ -23,6 +23,7 @@
 Implementa lo standard MQTT v5, offrendo una distribuzione dei dati ad alta efficienza con un sovraccarico minimo, rendendolo ideale per app mobili o monitoraggio remoto a bassa larghezza di banda.
 
 ### Caratteristiche principali:
+* 🔌 **Ponti per Macchine Esterne:** `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/`-PRINTER3D`/`-ROS2` raggiungono ciascuno questo broker tramite i propri topic `hydra/bridges/<name>/...` - vedi `docs/BRIDGE_TOPICS.md`. *(implementato)*
 * 📡 **Telemetria Pub/Sub:** Distribuzione in meno di un millisecondo di angoli dei giunti, stati degli strumenti e salute del sistema.
 * 🛠️ **Supporto alla scoperta:** mDNS integrato e auto-scoperta di Home Assistant per una facile configurazione.
 * 🔐 **Sicurezza dei topic:** ACL reale e verificabile per prefisso di ID client per la lettura e la scrittura di topic robotici specifici - una SUBSCRIBE con carattere jolly non può mai concedere un accesso più ampio della propria regola. *(implementato)*
@@ -138,6 +139,8 @@ Questo progetto fa parte di un ecosistema robotico più ampio dello stesso autor
 ### Relazione Diretta (fuori dalla famiglia)
 
 - **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** — la fonte dello stato esposto da questo adattatore.
+- **[HYDRA-UMC-BRIDGE-CNC](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-CNC)**, **[-LASER](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-LASER)**, **[-OPENPNP](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-OPENPNP)**, **[-PRINTER3D](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-PRINTER3D)**, **[-ROS2](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-ROS2)** — ciascuno include il proprio `mqtt_transport.py` che raggiunge questo broker tramite i propri topic `hydra/bridges/<name>/...`; vedi `docs/BRIDGE_TOPICS.md` in questo repository per il catalogo reale e condiviso dei topic.
+- **[HYDRA-UMC-BRIDGE-AMR](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-AMR)** — un altro client reale di questo stesso broker: `Vda5050Publisher` invia dispatch già validati come veri messaggi VDA 5050 `order`/`instantActions`, secondo lo schema di topic proprio di VDA 5050 anziché lo schema `hydra/bridges/...` sopra.
 
 ### Resto dell'Ecosistema
 

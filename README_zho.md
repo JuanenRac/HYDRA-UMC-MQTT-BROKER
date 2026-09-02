@@ -26,6 +26,7 @@ Assistant）能够订阅机器人遥测数据并发布指令。
 应用程序或低带宽的远程监控。
 
 ### 关键特性：
+* 🔌 **外部机器桥接:** `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/`-PRINTER3D`/`-ROS2` 各自通过自己的 `hydra/bridges/<name>/...` 主题连接到本代理——参见 `docs/BRIDGE_TOPICS.md`。*(已实现)*
 * 📡 **发布/订阅遥测：** 关节角度、工具状态和系统健康状况的亚毫秒级分发。
 * 🛠️ **发现支持：** 集成的 mDNS 和 Home Assistant 自动发现，便于设置。
 * 🔐 **主题安全：** 真实、可验证的按客户端 ID 前缀划分的 ACL，用于读写特定的机器人主题——带通配符的 SUBSCRIBE 永远无法获得比其规则更宽的访问权限。*(已实现)*
@@ -143,6 +144,8 @@ Broker 监听 `0.0.0.0:1883`（纯 MQTT/TCP，IANA 注册的默认端口）—�
 ### 直接相关（项目族之外）
 
 - **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** —— 本适配器所暴露状态的来源。
+- **[HYDRA-UMC-BRIDGE-CNC](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-CNC)**、**[-LASER](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-LASER)**、**[-OPENPNP](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-OPENPNP)**、**[-PRINTER3D](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-PRINTER3D)**、**[-ROS2](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-ROS2)**——每一个都自带 `mqtt_transport.py`,通过各自的 `hydra/bridges/<name>/...` 主题连接到本代理;完整的真实共享主题目录见本仓库的 `docs/BRIDGE_TOPICS.md`。
+- **[HYDRA-UMC-BRIDGE-AMR](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-AMR)**——同一个代理的另一个真实客户端:`Vda5050Publisher` 将已通过门控的派发发送为真实的 VDA 5050 `order`/`instantActions` 消息,使用 VDA 5050 自身的主题格式,而非上面的 `hydra/bridges/...` 方案。
 
 ### 生态系统的其余部分
 

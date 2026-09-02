@@ -27,6 +27,7 @@ MQTT v5 標準を実装しており、最小限のオーバーヘッドで高効
 配信を提供します。モバイルアプリや低帯域幅のリモート監視に最適です。
 
 ### 主な機能：
+* 🔌 **外部マシンブリッジ:** `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/`-PRINTER3D`/`-ROS2` はそれぞれ、独自の `hydra/bridges/<name>/...` トピックを通じてこのブローカーに到達する —— `docs/BRIDGE_TOPICS.md` を参照。*(実装済み)*
 * 📡 **パブリッシュ/サブスクライブ テレメトリ：** 関節角度、工具状態、システムの健全性のサブミリ秒単位の配信。
 * 🛠️ **ディスカバリーサポート：** 統合された mDNS と Home Assistant 自動検出により、簡単にセットアップできます。
 * 🔐 **トピックセキュリティ：** 特定のロボットトピックの読み書きに対する、クライアント ID プレフィックスごとの実際に検証可能な ACL——ワイルドカードを使った SUBSCRIBE が、そのルールより広いアクセス権を得ることは決してありません。*(実装済み)*
@@ -150,6 +151,8 @@ npm start
 ### 直接関連（ファミリー外）
 
 - **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** —— 本アダプターが公開する状態の発生源。
+- **[HYDRA-UMC-BRIDGE-CNC](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-CNC)**、**[-LASER](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-LASER)**、**[-OPENPNP](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-OPENPNP)**、**[-PRINTER3D](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-PRINTER3D)**、**[-ROS2](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-ROS2)** —— それぞれが独自の `mqtt_transport.py` を備え、独自の `hydra/bridges/<name>/...` トピックを通じてこのブローカーに到達する。実際の共有トピックカタログについては、このリポジトリの `docs/BRIDGE_TOPICS.md` を参照。
+- **[HYDRA-UMC-BRIDGE-AMR](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-AMR)** —— 同じブローカーの別の実在するクライアント:`Vda5050Publisher` は、既にゲートを通過したディスパッチを実際のVDA 5050 `order`/`instantActions` メッセージとして送信し、上記の `hydra/bridges/...` 方式ではなく、VDA 5050自身のトピック形式を使用する。
 
 ### エコシステムのその他のプロジェクト
 

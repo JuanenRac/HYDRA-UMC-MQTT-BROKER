@@ -23,6 +23,7 @@
 Er implementiert den MQTT v5-Standard und bietet eine hocheffiziente Datenverteilung mit minimalem Overhead, was ihn ideal für mobile Apps oder die Fernüberwachung mit geringer Bandbreite macht.
 
 ### Hauptmerkmale:
+* 🔌 **Externe Maschinenbrücken:** `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/`-PRINTER3D`/`-ROS2` erreichen diesen Broker jeweils über ihre eigenen `hydra/bridges/<name>/...`-Topics - siehe `docs/BRIDGE_TOPICS.md`. *(implementiert)*
 * 📡 **Pub/Sub-Telemetrie:** Verteilung von Gelenkwinkeln, Werkzeugzuständen und Systemstatus in weniger als einer Millisekunde.
 * 🛠️ **Discovery-Unterstützung:** Integriertes mDNS und Home Assistant Auto-Discovery für eine einfache Einrichtung.
 * 🔐 **Topic-Sicherheit:** Echte, verifizierbare ACL pro Client-ID-Präfix für das Lesen und Schreiben spezifischer Roboter-Topics - ein SUBSCRIBE mit Platzhalter kann nie einen breiteren Zugriff gewähren als seine Regel. *(implementiert)*
@@ -139,6 +140,8 @@ Dieses Projekt ist Teil eines größeren Robotik-Ökosystems desselben Autors (J
 ### Direkte Beziehung (außerhalb der Familie)
 
 - **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** — die Quelle des von diesem Adapter bereitgestellten Zustands.
+- **[HYDRA-UMC-BRIDGE-CNC](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-CNC)**, **[-LASER](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-LASER)**, **[-OPENPNP](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-OPENPNP)**, **[-PRINTER3D](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-PRINTER3D)**, **[-ROS2](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-ROS2)** — jede bringt ihr eigenes `mqtt_transport.py` mit, das diesen Broker über eigene `hydra/bridges/<name>/...`-Topics erreicht; siehe `docs/BRIDGE_TOPICS.md` in diesem Repository für den echten, gemeinsamen Topic-Katalog.
+- **[HYDRA-UMC-BRIDGE-AMR](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-AMR)** — ein anderer echter Client desselben Brokers: `Vda5050Publisher` sendet bereits geprüfte Dispatches als echte VDA-5050-`order`/`instantActions`-Nachrichten, nach VDA 5050s eigenem Topic-Schema statt dem obigen `hydra/bridges/...`-Schema.
 
 ### Restliches Ökosystem
 
