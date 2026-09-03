@@ -25,11 +25,11 @@ Implementa lo standard MQTT 3.1.1 (via Aedes, verificato dal vivo - vedi Archite
 ### Caratteristiche principali:
 * 🔌 **Ponti per Macchine Esterne:** `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/`-PRINTER3D`/`-ROS2` raggiungono ciascuno questo broker tramite i propri topic `hydra/bridges/<name>/...` - vedi `docs/BRIDGE_TOPICS.md`. *(implementato)*
 * 📡 **Telemetria Pub/Sub:** Distribuzione in meno di un millisecondo di angoli dei giunti, stati degli strumenti e salute del sistema.
-* 🛠️ **Supporto alla scoperta:** mDNS integrato e auto-scoperta di Home Assistant per una facile configurazione.
+* 🛠️ **Supporto alla scoperta:** mDNS e auto-scoperta di Home Assistant per una facile configurazione. *(pianificato - non ancora implementato; `src/server.ts` oggi è un semplice listener TCP, senza alcun servizio di discovery)*
 * 🔐 **Sicurezza dei topic:** ACL reale e verificabile per prefisso di ID client per la lettura e la scrittura di topic robotici specifici - una SUBSCRIBE con carattere jolly non può mai concedere un accesso più ampio della propria regola. *(implementato)*
 * 🪪 **Autenticazione del client:** L'autenticazione MQTT reale e facoltativa con nome utente/password durante CONNECT (`MQTT_AUTH_JSON`) fornisce all'ACL un'identità di sessione verificata. *(implementata; da abbinare all'ACL)*
 * 📏 **Limite sulla dimensione del payload:** Un limite reale e opzionale sulla dimensione del payload di PUBLISH, configurabile tramite `MAX_PAYLOAD_BYTES`. *(implementato)*
-* ⚡ **Supporto Websocket:** MQTT-over-WebSockets integrato per client basati su browser.
+* ⚡ **Supporto Websocket:** MQTT-over-WebSockets per client basati su browser. *(pianificato - non ancora implementato; oggi è cablato solo TCP semplice sulla porta 1883, vedi `package.json` - ancora nessuna dipendenza `ws`/websocket)*
 
 ---
 
@@ -44,6 +44,16 @@ flowchart TD
     SUB -- Publish Command --> CMD["hydra/swarm/robot_1/cmd/jog"]
     CMD --> HYDRA
 ```
+
+**Nota di onestà:** lo schema di topic `hydra/swarm/...` sopra illustra
+la forma *prevista* una volta che lo stato proprio di HYDRA-UMC-SERVER
+sarà collegato a MQTT - quel collegamento non è ancora cablato (il
+commento di intestazione di `src/server.ts` lo dice: "lands once that
+wiring is defined"), quindi oggi nulla pubblica su `hydra/swarm/...`. I
+topic reali e cablati oggi sono lo spazio dei nomi
+`hydra/bridges/<name>/...` dei 5 ponti macchina esterni (vedi
+`docs/BRIDGE_TOPICS.md`) e lo schema di topic VDA 5050 proprio di
+HYDRA-UMC-BRIDGE-AMR.
 
 ---
 
@@ -216,6 +226,7 @@ Questo progetto fa parte dell'ecosistema robotico HYDRA-UMC dello stesso autore 
 
 ## 📚 Documentazione e Comunità
 
+- **[docs/BRIDGE_TOPICS.md](docs/BRIDGE_TOPICS.md)** — il catalogo reale e condiviso di topic `hydra/bridges/<name>/...` che ogni ponte macchina esterno (CNC/Laser/OpenPnP/Printer3D/ROS2) usa davvero contro questo broker.
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** — stack tecnologico e linee guida di codifica per una pull request.
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** — gli standard di comportamento attesi in questa comunità.
 - **[SECURITY.md](SECURITY.md)** — come segnalare una vulnerabilità, e le reali aree di attenzione sulla sicurezza di questo progetto.

@@ -25,11 +25,11 @@ It implements the MQTT 3.1.1 standard (via Aedes, verified live - see Architectu
 ### Key Features:
 * 🔌 **External Machine Bridges:** `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/`-PRINTER3D`/`-ROS2` each reach this broker over their own `hydra/bridges/<name>/...` topics - see `docs/BRIDGE_TOPICS.md`. *(implemented)*
 * 📡 **Pub/Sub Telemetry:** Sub-millisecond distribution of joint angles, tool states, and system health.
-* 🛠️ **Discovery Support:** Integrated mDNS and Home Assistant auto-discovery for easy setup.
+* 🛠️ **Discovery Support:** mDNS and Home Assistant auto-discovery for easy setup. *(planned - not implemented yet; `src/server.ts` is a plain TCP listener today, no discovery service of any kind)*
 * 🔐 **Topic Security:** Real, verifiable per-client-ID-prefix ACL for reading and writing specific robot topics - a wildcard SUBSCRIBE can never grant broader access than its rule. *(implemented)*
 * 🪪 **Client Authentication:** Optional real MQTT username/password CONNECT authentication (`MQTT_AUTH_JSON`) gives the ACL a verified session identity. *(implemented; pair it with ACL)*
 * 📏 **Payload Size Limit:** A real, opt-in cap on PUBLISH payload size, configurable via `MAX_PAYLOAD_BYTES`. *(implemented)*
-* ⚡ **Websockets Support:** Integrated MQTT-over-WebSockets for browser-based clients.
+* ⚡ **Websockets Support:** MQTT-over-WebSockets for browser-based clients. *(planned - not implemented yet; only plain TCP on port 1883 is wired today, see `package.json` - no `ws`/websocket dependency yet)*
 
 ---
 
@@ -44,6 +44,15 @@ flowchart TD
     SUB -- Publish Command --> CMD["hydra/swarm/robot_1/cmd/jog"]
     CMD --> HYDRA
 ```
+
+**Honesty note:** the `hydra/swarm/...` topic shape above illustrates the
+*intended* target shape once HYDRA-UMC-SERVER's own state is bridged onto
+MQTT - that bridging is not wired yet (`src/server.ts`'s own header
+comment: "lands once that wiring is defined"), so nothing publishes to
+`hydra/swarm/...` today. The topics that are real and wired today are the
+5 external machine bridges' `hydra/bridges/<name>/...` namespace (see
+`docs/BRIDGE_TOPICS.md`) and HYDRA-UMC-BRIDGE-AMR's own VDA 5050 topic
+shape.
 
 ---
 
@@ -216,6 +225,7 @@ This project is part of the HYDRA-UMC robotics ecosystem by the same author (Jua
 
 ## 📚 Documentation & Community
 
+- **[docs/BRIDGE_TOPICS.md](docs/BRIDGE_TOPICS.md)** — the real, shared `hydra/bridges/<name>/...` topic catalog every external machine bridge (CNC/Laser/OpenPnP/Printer3D/ROS2) actually uses against this broker.
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** — tech stack and coding guidelines for a pull request.
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** — the standards of behavior expected in this community.
 - **[SECURITY.md](SECURITY.md)** — how to report a vulnerability, and this project's own real security focus areas.

@@ -28,11 +28,11 @@ Assistant）能够订阅机器人遥测数据并发布指令。
 ### 关键特性：
 * 🔌 **外部机器桥接:** `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/`-PRINTER3D`/`-ROS2` 各自通过自己的 `hydra/bridges/<name>/...` 主题连接到本代理——参见 `docs/BRIDGE_TOPICS.md`。*(已实现)*
 * 📡 **发布/订阅遥测：** 关节角度、工具状态和系统健康状况的亚毫秒级分发。
-* 🛠️ **发现支持：** 集成的 mDNS 和 Home Assistant 自动发现，便于设置。
+* 🛠️ **发现支持：** mDNS 和 Home Assistant 自动发现，便于设置。*（计划中——尚未实现；`src/server.ts` 目前只是一个纯 TCP 监听器，没有任何发现服务）*
 * 🔐 **主题安全：** 真实、可验证的按客户端 ID 前缀划分的 ACL，用于读写特定的机器人主题——带通配符的 SUBSCRIBE 永远无法获得比其规则更宽的访问权限。*(已实现)*
 * 🪪 **客户端认证：** 可选的真实 MQTT CONNECT 用户名/密码认证（`MQTT_AUTH_JSON`）为 ACL 提供经过验证的会话身份。*(已实现；应与 ACL 配合使用)*
 * 📏 **载荷大小限制：** 对 PUBLISH 载荷大小的真实、可选的上限，可通过 `MAX_PAYLOAD_BYTES` 配置。*(已实现)*
-* ⚡ **WebSocket 支持：** 面向浏览器端客户端的集成 MQTT over WebSocket。
+* ⚡ **WebSocket 支持：** 面向浏览器端客户端的 MQTT over WebSocket。*（计划中——尚未实现；目前只接通了 1883 端口的纯 TCP，见 `package.json`——尚无 `ws`/websocket 依赖）*
 
 ---
 
@@ -47,6 +47,14 @@ flowchart TD
     SUB -- Publish Command --> CMD["hydra/swarm/robot_1/cmd/jog"]
     CMD --> HYDRA
 ```
+
+**诚实说明：** 上面的 `hydra/swarm/...` 主题结构展示的是一旦
+HYDRA-UMC-SERVER 自身状态被接入 MQTT 之后*预期*的形态——这个接入目前
+还没有接通（`src/server.ts` 自己的头部注释写明："lands once that
+wiring is defined"），所以今天没有任何东西发布到 `hydra/swarm/...`。
+今天真正接通、真实存在的主题是 5 个外部机器桥接自己的
+`hydra/bridges/<name>/...` 命名空间（见 `docs/BRIDGE_TOPICS.md`），
+以及 HYDRA-UMC-BRIDGE-AMR 自己的 VDA 5050 主题结构。
 
 ---
 
@@ -219,6 +227,7 @@ Broker 监听 `0.0.0.0:1883`（纯 MQTT/TCP，IANA 注册的默认端口）—�
 
 ## 📚 文档与社区
 
+- **[docs/BRIDGE_TOPICS.md](docs/BRIDGE_TOPICS.md)** —— 每个外部机器桥接（CNC/Laser/OpenPnP/Printer3D/ROS2）针对本 broker 实际使用的、真实共享的 `hydra/bridges/<name>/...` 主题目录。
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** —— 提交 Pull Request 所需的技术栈和编码规范。
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** —— 本社区所期望的行为准则。
 - **[SECURITY.md](SECURITY.md)** —— 如何报告漏洞，以及本项目真实的安全关注重点。

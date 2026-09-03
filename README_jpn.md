@@ -29,11 +29,11 @@ MQTT 3.1.1 標準を実装しており(Aedes 経由、実機で検証済み - �
 ### 主な機能：
 * 🔌 **外部マシンブリッジ:** `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/`-PRINTER3D`/`-ROS2` はそれぞれ、独自の `hydra/bridges/<name>/...` トピックを通じてこのブローカーに到達する —— `docs/BRIDGE_TOPICS.md` を参照。*(実装済み)*
 * 📡 **パブリッシュ/サブスクライブ テレメトリ：** 関節角度、工具状態、システムの健全性のサブミリ秒単位の配信。
-* 🛠️ **ディスカバリーサポート：** 統合された mDNS と Home Assistant 自動検出により、簡単にセットアップできます。
+* 🛠️ **ディスカバリーサポート：** mDNS と Home Assistant 自動検出により、簡単にセットアップできます。*（計画中——まだ実装されていません。`src/server.ts` は現在ただの TCP リスナーであり、ディスカバリーサービスは一切ありません）*
 * 🔐 **トピックセキュリティ：** 特定のロボットトピックの読み書きに対する、クライアント ID プレフィックスごとの実際に検証可能な ACL——ワイルドカードを使った SUBSCRIBE が、そのルールより広いアクセス権を得ることは決してありません。*(実装済み)*
 * 🪪 **クライアント認証：** 任意の MQTT CONNECT ユーザー名/パスワード認証（`MQTT_AUTH_JSON`）により、ACL に検証済みのセッション ID を提供します。*(実装済み。ACL と組み合わせて使用)*
 * 📏 **ペイロードサイズ制限：** PUBLISH のペイロードサイズに対する実際のオプトイン方式の上限で、`MAX_PAYLOAD_BYTES` で設定可能です。*(実装済み)*
-* ⚡ **WebSocket サポート：** ブラウザベースのクライアント向けに統合された MQTT over WebSocket。
+* ⚡ **WebSocket サポート：** ブラウザベースのクライアント向けの MQTT over WebSocket。*（計画中——まだ実装されていません。現在配線されているのはポート 1883 でのプレーン TCP のみです。`package.json` を参照——`ws`/websocket 依存はまだありません）*
 
 ---
 
@@ -48,6 +48,16 @@ flowchart TD
     SUB -- Publish Command --> CMD["hydra/swarm/robot_1/cmd/jog"]
     CMD --> HYDRA
 ```
+
+**正直な注記：** 上記の `hydra/swarm/...` というトピック形は、
+HYDRA-UMC-SERVER 自身の状態が MQTT に接続された場合の*目標*の形を
+示しているだけです——その配線はまだ行われていません
+（`src/server.ts` 自身のヘッダーコメントにその旨が書かれています：
+"lands once that wiring is defined"）。そのため、現在
+`hydra/swarm/...` に何かを publish するものはありません。今日実際に
+配線され本物であるトピックは、5 つの外部マシンブリッジ自身の
+`hydra/bridges/<name>/...` 名前空間（`docs/BRIDGE_TOPICS.md` を参照）
+と、HYDRA-UMC-BRIDGE-AMR 自身の VDA 5050 トピック形です。
 
 ---
 
@@ -224,6 +234,7 @@ npm start
 
 ## 📚 ドキュメント & コミュニティ
 
+- **[docs/BRIDGE_TOPICS.md](docs/BRIDGE_TOPICS.md)** —— 各外部マシンブリッジ（CNC/Laser/OpenPnP/Printer3D/ROS2）がこのブローカーに対して実際に使用している、リアルで共有された `hydra/bridges/<name>/...` トピックカタログ。
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** —— プルリクエストのための技術スタックとコーディング指針。
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** —— このコミュニティで期待される行動規範。
 - **[SECURITY.md](SECURITY.md)** —— 脆弱性の報告方法と、このプロジェクトの実際のセキュリティ重点領域。
