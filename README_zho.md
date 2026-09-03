@@ -10,7 +10,7 @@
 
 <p align="left">
   <img src="https://img.shields.io/badge/Licencia-GPL%203.0-blue.svg" alt="GPL 3.0">
-  <img src="https://img.shields.io/badge/Protocol-MQTT%20v5-orange.svg" alt="MQTT">
+  <img src="https://img.shields.io/badge/Protocol-MQTT%203.1.1-orange.svg" alt="MQTT">
   <img src="https://img.shields.io/badge/Feature-Pub%20%2F%20Sub%20Telemetry-blue.svg" alt="PubSub">
 </p>
 
@@ -22,7 +22,7 @@
 消息传递接口。它使外部 IoT 设备、仪表盘和家庭自动化系统（如 Home
 Assistant）能够订阅机器人遥测数据并发布指令。
 
-它实现了 MQTT v5 标准，以最小的开销提供高效的数据分发，非常适合移动
+它实现了 MQTT 3.1.1 标准（通过 Aedes，已实测验证——见下方"架构"部分），以最小的开销提供高效的数据分发，非常适合移动
 应用程序或低带宽的远程监控。
 
 ### 关键特性：
@@ -60,6 +60,7 @@ flowchart TD
 * **为何主题 ACL 检查的是订阅的*范围*，而不仅仅是过滤器的重叠。** 客户端自身的 SUBSCRIBE 请求本身就是一个过滤器，可以携带 `+`/`#` 通配符——如果简单地检查“请求的过滤器是否与允许的过滤器重叠”，就会让客户端用比其规则实际授予的（例如 `hydra/robots/+/status`）更宽的通配符（例如 `hydra/robots/#`）进行订阅，从而在不知情的情况下看到从未被授权访问的主题。`src/acl.ts` 中的 `isSubscriptionWithinScope()` 函数改为执行真实的、逐段的检查——并通过真实测试得到验证，其中一个测试正是机器人自身尝试用通配符 SUBSCRIBE 扩大其访问范围，结果被拒绝。
 * **为何被拒绝的 PUBLISH 会关闭整个连接，而不仅仅是对单条消息做 NACK。** 这是 Aedes 自身真实的行为（通过针对它运行真实客户端验证得出，而非从文档中假设的）——`authorizePublish` 返回错误会直接销毁该客户端的连接。这里的 ACL/载荷限制设计正是顺应这一行为而非绕开它：一个因违反其 ACL 而不断被断开连接的客户端，是一个清晰、响亮的信号，提示需要修正该设备的配置，而不是一条可能永远不会被注意到、被静默丢弃的消息。
 * **为何 ACL/载荷限制的配置存放在环境变量（`MQTT_ACL_JSON`/`MAX_PAYLOAD_BYTES`）中，而非配置文件里。** 这与本项目现有的 `PORT` 约定保持一致（参见 `.env.example`），也符合其实际部署方式（systemd/Docker 环境，而非挂载文件）——`parseAclConfig()` 在遇到格式错误的 JSON 时会大声地使启动失败，而不是悄悄地在无保护状态下运行。
+* **为何这个 broker 说的是 MQTT 3.1.1，而不是 MQTT v5。** `aedes@1.1.1`（锁定的依赖版本）只实现了 MQTT 3.1/3.1.1——通过实测验证：用真实的 `mqtt` 客户端以 `protocolVersion: 5` 连接时，broker 会主动拒绝（`Connection refused: Unacceptable protocol version`），这也与 Aedes 自身的上游文档一致（MQTT 5.0 支持存在于一个尚未发布的独立分支上）。本生态系统中的每一个客户端（`mqtt_transport.py` 系列桥接、`Vda5050Publisher`、本仓库自己的测试）本来就只协商 3.1.1，因此这只是一次文档修正，而非行为变更。
 
 ---
 

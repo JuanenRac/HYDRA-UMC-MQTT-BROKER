@@ -10,7 +10,7 @@
 
 <p align="left">
   <img src="https://img.shields.io/badge/Licencia-GPL%203.0-blue.svg" alt="GPL 3.0">
-  <img src="https://img.shields.io/badge/Protocolo-MQTT%20v5-orange.svg" alt="MQTT">
+  <img src="https://img.shields.io/badge/Protocolo-MQTT%203.1.1-orange.svg" alt="MQTT">
   <img src="https://img.shields.io/badge/Función-Telemetría%20Pub%20%2F%20Sub-blue.svg" alt="PubSub">
 </p>
 
@@ -20,7 +20,7 @@
 
 **HYDRA-UMC-MQTT-BROKER** proporciona una interfaz de mensajería asíncrona y ligera para el ecosistema HYDRA-UMC. Permite que dispositivos IoT externos, dashboards y sistemas de automatización del hogar (como Home Assistant) se suscriban a la telemetría del robot y publiquen comandos.
 
-Implementa el estándar MQTT v5, ofreciendo una distribución de datos de alta eficiencia con un overhead mínimo, lo que lo hace ideal para aplicaciones móviles o monitorización remota de bajo ancho de banda.
+Implementa el estándar MQTT 3.1.1 (vía Aedes, verificado en vivo - ver Arquitectura más abajo), ofreciendo una distribución de datos de alta eficiencia con un overhead mínimo, lo que lo hace ideal para aplicaciones móviles o monitorización remota de bajo ancho de banda.
 
 ### Características Clave:
 * 🔌 **Puentes de Máquinas Externas:** `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/`-PRINTER3D`/`-ROS2` llegan cada uno a este broker por sus propios tópicos `hydra/bridges/<name>/...` - ver `docs/BRIDGE_TOPICS.md`. *(implementado)*
@@ -57,6 +57,7 @@ flowchart TD
 * **Por qué la ACL de tópicos comprueba el *alcance* de la suscripción, no solo el solapamiento del filtro.** La propia solicitud SUBSCRIBE de un cliente es en sí misma un filtro y puede llevar comodines `+`/`#` - comprobar ingenuamente si "el filtro solicitado se solapa con el permitido" dejaría que un cliente se suscribiera con un comodín más amplio (p. ej. `hydra/robots/#`) del que su regla realmente concede (p. ej. `hydra/robots/+/status`) y viera en silencio tópicos para los que nunca estuvo autorizado. `src/acl.ts`, con su función `isSubscriptionWithinScope()`, hace en su lugar una comprobación real, segmento por segmento - demostrado con tests reales, incluyendo uno en el que el propio intento de un robot de escalar su alcance con un SUBSCRIBE de comodín es denegado.
 * **Por qué un PUBLISH denegado cierra toda la conexión, en vez de solo hacer NACK a un mensaje.** Este es el comportamiento real propio de Aedes (verificado ejecutando un cliente real contra él, no asumido de la documentación) - `authorizePublish` al devolver un error destruye la conexión del cliente. El diseño de la ACL/límite de payload aquí trabaja con eso, no en contra: un cliente que sigue siendo desconectado por violar su ACL es una señal clara y evidente para corregir la configuración de ese dispositivo, no un mensaje silenciosamente descartado que quizá nunca note.
 * **Por qué la configuración de la ACL/límite de payload vive en variables de entorno (`MQTT_ACL_JSON`/`MAX_PAYLOAD_BYTES`), no en un archivo de configuración.** Coincide con la convención existente de `PORT` en este proyecto (ver `.env.example`) y con cómo se despliega realmente (entorno systemd/Docker, no un archivo montado) - `parseAclConfig()` falla el arranque de forma ruidosa ante un JSON malformado en vez de ejecutarse en silencio sin protección.
+* **Por qué este broker habla MQTT 3.1.1, no MQTT v5.** `aedes@1.1.1` (la dependencia fijada) solo implementa MQTT 3.1/3.1.1 - verificado en vivo conectando un cliente `mqtt` real con `protocolVersion: 5`, que el broker rechaza activamente (`Connection refused: Unacceptable protocol version`), y confirmado contra la propia documentación upstream de Aedes (el soporte de MQTT 5.0 vive en una rama separada, no publicada). Todos los clientes de este ecosistema (los bridges `mqtt_transport.py`, `Vda5050Publisher`, los propios tests de este repo) ya negocian solo 3.1.1, así que esto es una corrección de documentación, no un cambio de comportamiento.
 
 ---
 

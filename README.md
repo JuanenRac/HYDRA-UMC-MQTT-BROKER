@@ -10,7 +10,7 @@
 
 <p align="left">
   <img src="https://img.shields.io/badge/Licencia-GPL%203.0-blue.svg" alt="GPL 3.0">
-  <img src="https://img.shields.io/badge/Protocol-MQTT%20v5-orange.svg" alt="MQTT">
+  <img src="https://img.shields.io/badge/Protocol-MQTT%203.1.1-orange.svg" alt="MQTT">
   <img src="https://img.shields.io/badge/Feature-Pub%20%2F%20Sub%20Telemetry-blue.svg" alt="PubSub">
 </p>
 
@@ -20,7 +20,7 @@
 
 **HYDRA-UMC-MQTT-BROKER** provides a lightweight, asynchronous messaging interface for the HYDRA-UMC ecosystem. It allows external IoT devices, dashboards, and home automation systems (like Home Assistant) to subscribe to robot telemetry and publish commands.
 
-It implements the MQTT v5 standard, offering high-efficiency data distribution with minimal overhead, making it ideal for mobile apps or low-bandwidth remote monitoring.
+It implements the MQTT 3.1.1 standard (via Aedes, verified live - see Architecture below), offering high-efficiency data distribution with minimal overhead, making it ideal for mobile apps or low-bandwidth remote monitoring.
 
 ### Key Features:
 * 🔌 **External Machine Bridges:** `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/`-PRINTER3D`/`-ROS2` each reach this broker over their own `hydra/bridges/<name>/...` topics - see `docs/BRIDGE_TOPICS.md`. *(implemented)*
@@ -57,6 +57,7 @@ flowchart TD
 * **Why the topic ACL checks subscription *scope*, not just filter overlap.** A client's own SUBSCRIBE request is itself a filter and can carry `+`/`#` wildcards - naively checking "does the requested filter overlap the allowed one" would let a client subscribe with a broader wildcard (e.g. `hydra/robots/#`) than its rule actually grants (e.g. `hydra/robots/+/status`) and silently see topics it was never authorized for. `src/acl.ts`'s `isSubscriptionWithinScope()` does a real, segment-by-segment check instead - proven with real tests, including one where a robot's own wildcard SUBSCRIBE attempt to escalate its scope is denied.
 * **Why a denied PUBLISH closes the whole connection, not just NACKs one message.** This is Aedes's own real behavior (verified by running a real client against it, not assumed from the docs) - `authorizePublish` returning an error destroys the client's connection. The ACL/payload-limit design here works with that, not around it: a client that keeps getting disconnected for violating its ACL is a clear, loud signal to fix that device's config, not a silently-dropped message it might never notice.
 * **Why ACL/payload-limit config lives in env vars (`MQTT_ACL_JSON`/`MAX_PAYLOAD_BYTES`), not a config file.** Matches this project's existing `PORT` convention (see `.env.example`) and how it's actually deployed (systemd/Docker environment, not a mounted file) - `parseAclConfig()` fails startup loudly on malformed JSON rather than silently running unprotected.
+* **Why this broker speaks MQTT 3.1.1, not MQTT v5.** `aedes@1.1.1` (the pinned dependency) only implements MQTT 3.1/3.1.1 - verified live by connecting a real `mqtt` client with `protocolVersion: 5`, which the broker actively refuses (`Connection refused: Unacceptable protocol version`), and confirmed against Aedes's own upstream docs (MQTT 5.0 support lives on a separate, unreleased branch). Every client in this ecosystem (`mqtt_transport.py` bridges, `Vda5050Publisher`, this repo's own tests) already only ever negotiates 3.1.1, so this is a documentation correction, not a behavior change.
 
 ---
 

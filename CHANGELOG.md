@@ -24,6 +24,17 @@ semantic-versioning judgment calls:
 
 ---
 
+## Documentation - Corrected protocol version claim
+
+- **README (all 7 languages), `package.json`, `src/server.ts`, `CONTRIBUTING.md`** - corrected
+  "MQTT v5" to the real protocol this broker speaks: MQTT 3.1.1. `aedes@1.1.1` (the
+  pinned dependency) only implements MQTT 3.1/3.1.1; verified live by connecting a real
+  `mqtt` client with `protocolVersion: 5`, which the broker refuses with `Connection
+  refused: Unacceptable protocol version`. `CONTRIBUTING.md` also corrected "JWT-based
+  authentication" to the real mechanism (`MQTT_AUTH_JSON` CONNECT username/password) and
+  its reference to a non-existent `tests/load_test.js` to the real Vitest suite.
+  Documentation-only - no code behavior changed, no version bump.
+
 ## Unreleased - Opt-in authenticated MQTT sessions
 
 - **`src/auth.ts`** (new) - validates the `MQTT_AUTH_JSON` credential list,

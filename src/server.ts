@@ -1,5 +1,5 @@
 // =============================================================================
-// HYDRA-UMC MQTT BROKER - MQTT v5 Broker over plain TCP: src/server.ts
+// HYDRA-UMC MQTT BROKER - MQTT 3.1.1 Broker over plain TCP: src/server.ts
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 // GPL-3.0 - see LICENSE
 //

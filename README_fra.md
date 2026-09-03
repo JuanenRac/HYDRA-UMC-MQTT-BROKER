@@ -10,7 +10,7 @@
 
 <p align="left">
   <img src="https://img.shields.io/badge/Licence-GPL%203.0-blue.svg" alt="GPL 3.0">
-  <img src="https://img.shields.io/badge/Protocole-MQTT%20v5-orange.svg" alt="MQTT">
+  <img src="https://img.shields.io/badge/Protocole-MQTT%203.1.1-orange.svg" alt="MQTT">
   <img src="https://img.shields.io/badge/Fonction-Pub%20%2F%20Sub%20Telemetry-blue.svg" alt="PubSub">
 </p>
 
@@ -20,7 +20,7 @@
 
 **HYDRA-UMC-MQTT-BROKER** fournit une interface de messagerie asynchrone et légère pour l'écosystème HYDRA-UMC. Il permet aux appareils IoT externes, aux tableaux de bord et aux systèmes domotiques (comme Home Assistant) de s'abonner à la télémétrie des robots et de publier des commandes.
 
-Il implémente la norme MQTT v5, offrant une distribution de données haute efficacité avec un surdébit minimal, ce qui le rend idéal pour les applications mobiles ou la surveillance à distance à faible bande passante.
+Il implémente la norme MQTT 3.1.1 (via Aedes, vérifié en conditions réelles - voir Architecture ci-dessous), offrant une distribution de données haute efficacité avec un surdébit minimal, ce qui le rend idéal pour les applications mobiles ou la surveillance à distance à faible bande passante.
 
 ### Caractéristiques principales :
 * 🔌 **Ponts de Machines Externes :** `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/`-PRINTER3D`/`-ROS2` atteignent chacun ce broker via leurs propres topics `hydra/bridges/<name>/...` - voir `docs/BRIDGE_TOPICS.md`. *(implémenté)*
@@ -57,6 +57,7 @@ flowchart TD
 * **Pourquoi l'ACL de sujets vérifie la *portée* de l'abonnement, pas seulement le chevauchement du filtre.** La propre requête SUBSCRIBE d'un client est elle-même un filtre et peut porter des caractères génériques `+`/`#` - vérifier naïvement si « le filtre demandé chevauche celui autorisé » permettrait à un client de s'abonner avec un caractère générique plus large (p. ex. `hydra/robots/#`) que ce que sa règle accorde réellement (p. ex. `hydra/robots/+/status`) et de voir silencieusement des sujets pour lesquels il n'a jamais été autorisé. `src/acl.ts`, avec sa fonction `isSubscriptionWithinScope()`, effectue à la place une vérification réelle, segment par segment - prouvé par de vrais tests, y compris un cas où la propre tentative d'un robot d'étendre sa portée via un SUBSCRIBE avec caractère générique est refusée.
 * **Pourquoi un PUBLISH refusé ferme toute la connexion, plutôt que de simplement faire un NACK sur un seul message.** C'est le comportement réel propre d'Aedes (vérifié en exécutant un vrai client contre lui, pas supposé d'après la documentation) - `authorizePublish` renvoyant une erreur détruit la connexion du client. La conception de l'ACL/limite de payload ici travaille avec ce comportement, pas contre lui : un client qui continue d'être déconnecté pour violation de son ACL est un signal clair et net pour corriger la configuration de cet appareil, pas un message silencieusement abandonné qu'il pourrait ne jamais remarquer.
 * **Pourquoi la configuration de l'ACL/limite de payload réside dans des variables d'environnement (`MQTT_ACL_JSON`/`MAX_PAYLOAD_BYTES`), pas dans un fichier de configuration.** Cela correspond à la convention `PORT` déjà existante de ce projet (voir `.env.example`) et à la façon dont il est réellement déployé (environnement systemd/Docker, pas un fichier monté) - `parseAclConfig()` fait échouer le démarrage de manière bruyante en cas de JSON malformé plutôt que de s'exécuter silencieusement sans protection.
+* **Pourquoi ce broker parle MQTT 3.1.1, pas MQTT v5.** `aedes@1.1.1` (la dépendance figée) n'implémente que MQTT 3.1/3.1.1 - vérifié en conditions réelles en connectant un vrai client `mqtt` avec `protocolVersion: 5`, que le broker refuse activement (`Connection refused: Unacceptable protocol version`), et confirmé par la propre documentation amont d'Aedes (le support MQTT 5.0 vit sur une branche séparée, non publiée). Chaque client de cet écosystème (les bridges `mqtt_transport.py`, `Vda5050Publisher`, les propres tests de ce dépôt) ne négocie déjà que la version 3.1.1, donc ceci est une correction de documentation, pas un changement de comportement.
 
 ---
 

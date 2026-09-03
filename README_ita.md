@@ -10,7 +10,7 @@
 
 <p align="left">
   <img src="https://img.shields.io/badge/Licenza-GPL%203.0-blue.svg" alt="GPL 3.0">
-  <img src="https://img.shields.io/badge/Protocollo-MQTT%20v5-orange.svg" alt="MQTT">
+  <img src="https://img.shields.io/badge/Protocollo-MQTT%203.1.1-orange.svg" alt="MQTT">
   <img src="https://img.shields.io/badge/Funzione-Pub%20%2F%20Sub%20Telemetry-blue.svg" alt="PubSub">
 </p>
 
@@ -20,7 +20,7 @@
 
 **HYDRA-UMC-MQTT-BROKER** fornisce un'interfaccia di messaggistica asincrona e leggera per l'ecosistema HYDRA-UMC. Consente a dispositivi IoT esterni, dashboard e sistemi di automazione domestica (come Home Assistant) di sottoscriversi alla telemetria del robot e pubblicare comandi.
 
-Implementa lo standard MQTT v5, offrendo una distribuzione dei dati ad alta efficienza con un sovraccarico minimo, rendendolo ideale per app mobili o monitoraggio remoto a bassa larghezza di banda.
+Implementa lo standard MQTT 3.1.1 (via Aedes, verificato dal vivo - vedi Architettura più sotto), offrendo una distribuzione dei dati ad alta efficienza con un sovraccarico minimo, rendendolo ideale per app mobili o monitoraggio remoto a bassa larghezza di banda.
 
 ### Caratteristiche principali:
 * 🔌 **Ponti per Macchine Esterne:** `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/`-PRINTER3D`/`-ROS2` raggiungono ciascuno questo broker tramite i propri topic `hydra/bridges/<name>/...` - vedi `docs/BRIDGE_TOPICS.md`. *(implementato)*
@@ -57,6 +57,7 @@ flowchart TD
 * **Perché l'ACL dei topic verifica l'*ambito* della sottoscrizione, non solo la sovrapposizione del filtro.** La richiesta SUBSCRIBE di un client è essa stessa un filtro e può contenere caratteri jolly `+`/`#` - verificare ingenuamente se "il filtro richiesto si sovrappone a quello consentito" permetterebbe a un client di sottoscriversi con un carattere jolly più ampio (ad es. `hydra/robots/#`) di quanto la sua regola effettivamente conceda (ad es. `hydra/robots/+/status`) e vedere silenziosamente topic per cui non è mai stato autorizzato. `src/acl.ts`, con la sua funzione `isSubscriptionWithinScope()`, esegue invece un controllo reale, segmento per segmento - dimostrato con test reali, incluso uno in cui il tentativo di un robot di ampliare il proprio ambito tramite una SUBSCRIBE con carattere jolly viene negato.
 * **Perché una PUBLISH negata chiude l'intera connessione, invece di limitarsi a un NACK su un singolo messaggio.** Questo è il comportamento reale proprio di Aedes (verificato eseguendo un client reale contro di esso, non presunto dalla documentazione) - `authorizePublish`, restituendo un errore, distrugge la connessione del client. Il design dell'ACL/limite di payload qui lavora con questo comportamento, non contro di esso: un client che continua a essere disconnesso per violazione della propria ACL è un segnale chiaro ed evidente per correggere la configurazione di quel dispositivo, non un messaggio scartato in silenzio che potrebbe non notare mai.
 * **Perché la configurazione dell'ACL/limite di payload risiede in variabili d'ambiente (`MQTT_ACL_JSON`/`MAX_PAYLOAD_BYTES`), non in un file di configurazione.** Corrisponde alla convenzione `PORT` già esistente in questo progetto (vedi `.env.example`) e al modo in cui viene effettivamente distribuito (ambiente systemd/Docker, non un file montato) - `parseAclConfig()` fa fallire l'avvio in modo rumoroso in caso di JSON malformato invece di funzionare silenziosamente senza protezione.
+* **Perché questo broker parla MQTT 3.1.1, non MQTT v5.** `aedes@1.1.1` (la dipendenza fissata) implementa solo MQTT 3.1/3.1.1 - verificato dal vivo connettendo un client `mqtt` reale con `protocolVersion: 5`, che il broker rifiuta attivamente (`Connection refused: Unacceptable protocol version`), e confermato dalla documentazione upstream di Aedes stessa (il supporto MQTT 5.0 vive su un branch separato, non rilasciato). Ogni client di questo ecosistema (i bridge `mqtt_transport.py`, `Vda5050Publisher`, i test propri di questo repo) negozia già solo la 3.1.1, quindi questa è una correzione di documentazione, non un cambiamento di comportamento.
 
 ---
 
