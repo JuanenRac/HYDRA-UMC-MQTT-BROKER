@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "ecosystem": "HYDRA-UMC",
+  "name": "HYDRA-UMC-MQTT-BROKER",
+  "version": "0.0.9",
+  "role": "service",
+  "stack": "node",
+  "technologies": [
+    "Node.js",
+    "Aedes MQTT broker"
+  ],
+  "deployment_target": "cm5",
+  "maturity": "established",
+  "family": "Industrial Gateway",
+  "parent": "HYDRA-UMC-GATEWAY-INDUSTRIAL",
+  "build": "npm install && npm run build.",
+  "notes": "Real MQTT broker over real TCP. Optional MQTT CONNECT username/password authentication (MQTT_AUTH_JSON) gives the opt-in per-client-ID-prefix topic ACL (MQTT_ACL_JSON) a verified session identity; ACL scope checks prevent wildcard SUBSCRIBE escalation. An optional MAX_PAYLOAD_BYTES cap is enforced on every PUBLISH. All three controls are verified with real Aedes and MQTT clients, not only unit math.",
+  "native_version": {
+    "file": "package.json",
+    "pattern": "\"version\":\\s*\"(\\d+)\\.(\\d+)\\.(\\d+)\""
+  },
+  "service": {
+    "port": 1883
+  }
+}

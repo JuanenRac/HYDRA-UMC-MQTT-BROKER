@@ -1,0 +1,176 @@
+# Changelog
+
+All notable public work on **HYDRA-UMC-MQTT-BROKER** is summarized here,
+newest first. This changelog intentionally omits calendar dates and internal
+work-session detail.
+
+## Versioning scheme
+
+`package.json`'s `version` field bumps via `bump_manifest_version.py`
+(bare invocation - single owner, no separate `--sync` step), run by
+`build.bat`/`build.sh` BEFORE `npm run build` itself - no manual version
+edits, no build that silently ships under the previous number.
+`scripts/bump-version.mjs` is a legacy native-only helper kept for
+reference; `npm run build` on its own is deliberately compilation-only
+(same convention HYDRA-UMC-SERVER/HYDRA-UMC-STUDIO already use), it does
+not call that script.
+
+It follows the ecosystem-wide base-10 "odometer" rule rather than
+semantic-versioning judgment calls:
+
+- `PATCH` +1 on every build
+- when `PATCH` would exceed 9, it resets to 0 and `MINOR` +1 instead (e.g. `0.0.9` -> `0.1.0`, never `0.0.10`)
+- the same carry cascades into `MAJOR` if `MINOR` would exceed 9
+
+---
+
+## [0.0.9] - MQTT-01: bind authenticated identity to a real client-ID prefix
+
+- **MQTT-01 (found in an ecosystem-wide software-improvements audit, P1):**
+  `credentialsAuthenticate` verified username/password only - `src/acl.ts`'s
+  own rules key entirely off client ID prefix, and a client ID is
+  client-chosen, unrelated to which credential authenticated it. A real,
+  valid but lower-privilege credential could authenticate normally, then
+  simply declare a different, more-privileged client ID in CONNECT and pass
+  an ACL its own identity was never granted. `BrokerCredential` now requires
+  a `clientIdPrefix`; CONNECT is rejected (standard bad-username-or-password
+  CONNACK) unless the declared client ID actually starts with the matched
+  credential's own prefix, binding the verified principal to the identity
+  space the ACL actually authorizes it for. `SECURITY.md`, `README.md` and
+  `.env.example` corrected to describe this real binding instead of
+  overstating what username/password verification alone already provided.
+  9 new tests (unit + two real broker/client end-to-end scenarios,
+  including the combined auth+ACL case the finding itself describes):
+  `npx vitest run` - 62/62 passing; `npx tsc --noEmit` clean.
+- **`buildBroker()` gained an opt-in `wsPort` option (`MQTT_WS_PORT` env var)**
+  wiring a real second listener onto the SAME broker instance, alongside the
+  existing plain-TCP one - found in an ecosystem-wide software-improvements
+  audit: this README's own "Websockets Support" feature was listed as
+  "planned - not implemented" with no `ws`/websocket dependency in
+  `package.json` at all. Authentication/ACL/payload-limit hooks apply to a
+  WS-connected client exactly as they do to a TCP one, since Aedes itself
+  (not the transport) evaluates them.
+- **New `wsToDuplex()`** adapts a `ws` connection into the Duplex
+  `broker.handle()` already accepts - deliberately NOT `ws`'s own
+  `createWebSocketStream()` helper (tried first): a real, reproducible bug
+  was found against it (and against an equivalent hand-rolled Duplex, so
+  it isn't specific to one implementation) - a caller that writes one MQTT
+  packet as many small successive WS messages (e.g. `mqtt.js`'s own
+  Node-side WS client, unlike its browser build, which batches writes)
+  made Aedes's own internal read-batching stop re-triggering reads after
+  the first tiny chunk, hanging the CONNECT handshake forever with no
+  error on either side. Coalescing every WS message that arrives within
+  the same event-loop turn into one `push()` (so a real multi-frame packet
+  is joined back into a single chunk before Aedes ever sees it) sidesteps
+  the hang entirely.
+- New `tests/ws-broker.test.ts`: a real MQTT client (the `mqtt` npm
+  package) connects over a real `ws://` socket, and a real PUBLISH from
+  that WS client is confirmed delivered to a separate TCP-connected
+  subscriber - proving both transports reach the same broker.
+
+## Documentation - Corrected protocol version claim
+
+- **README (all 7 languages), `package.json`, `src/server.ts`, `CONTRIBUTING.md`** - corrected
+  "MQTT v5" to the real protocol this broker speaks: MQTT 3.1.1. `aedes@1.1.1` (the
+  pinned dependency) only implements MQTT 3.1/3.1.1; verified live by connecting a real
+  `mqtt` client with `protocolVersion: 5`, which the broker refuses with `Connection
+  refused: Unacceptable protocol version`. `CONTRIBUTING.md` also corrected "JWT-based
+  authentication" to the real mechanism (`MQTT_AUTH_JSON` CONNECT username/password) and
+  its reference to a non-existent `tests/load_test.js` to the real Vitest suite.
+  Documentation-only - no code behavior changed, no version bump.
+
+- **`src/auth.ts`** (new) - validates the `MQTT_AUTH_JSON` credential list,
+  rejects blank or duplicate user names at startup, and verifies matching
+  password buffers with Node's constant-time comparison primitive. Secrets
+  are never written to logs or errors.
+- **`src/server.ts`** - `buildBroker()` now accepts optional credentials and
+  rejects unauthenticated MQTT CONNECT attempts with the standard bad
+  username/password CONNACK outcome. Authentication remains opt-in so an
+  existing local broker stays compatible until explicitly configured.
+- **`.env.example`** documents secure deployment of `MQTT_AUTH_JSON` and why
+  authenticated identity must be paired with the topic ACL.
+
+## [0.0.8] - External machine bridge topic catalog
+
+- **`docs/BRIDGE_TOPICS.md`** (new) - the real, shared `hydra/bridges/
+  <name>/...` topic convention `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/
+  `-PRINTER3D`/`-ROS2` now all use to reach this broker (each ships its
+  own `mqtt_transport.py`, per the ecosystem's own "MQTT via the real
+  broker, real commands included" decision) - the shared `cmd/job` gate
+  every bridge answers identically, and each bridge's own per-topic real
+  commands (never inventing authority beyond what each bridge's Python
+  API already had).
+- **`.env.example`** - a real `MQTT_ACL_JSON` example scoping all 5
+  bridges to their own `hydra/bridges/<name>/#` namespace, keyed by each
+  bridge's own real `run_forever()` client ID default - commented out by
+  default, same opt-in convention as the existing ACL example.
+
+## [0.0.7] - Fixed the Docker image: MODULE_NOT_FOUND on every real run
+
+- **`Dockerfile`'s runtime stage never installed dependencies** - real bug
+  found live building and running this image for the first time (as part
+  of HYDRA-UMC-GATEWAY-INDUSTRIAL's own `docker-compose.yml`): the build
+  stage bundles with esbuild's own `--packages=external` (deliberate -
+  keeps real npm dependencies as real `require()` calls rather than
+  inlining them), so the runtime stage needed them installed separately -
+  it never was, so the container crashed immediately with
+  `MODULE_NOT_FOUND` on every real start. Now copies `package-lock.json`
+  too and runs `npm ci --omit=dev` in the runtime stage, the same pattern
+  HYDRA-UMC-OS's own `install_server.sh` already uses for
+  HYDRA-UMC-SERVER (also esbuild + `--packages=external`). Verified live:
+  the container now starts and stays up, and
+  `HYDRA-UMC-GATEWAY-INDUSTRIAL`'s own `GET /status` reports this service
+  reachable with a real measured latency.
+
+## [0.0.6] - Validate programmatic listener port and payload limits
+
+- **`buildBroker()`** - validated its own `port` (integer, 0..65535) and
+  `options.maxPayloadBytes` (positive safe integer) arguments before opening
+  the broker, matching the existing environment-variable validation path -
+  a caller embedding this broker programmatically got the same guarantees
+  as the CLI/env-driven path already had.
+- 51/51 tests passing.
+
+## [0.0.5] - Real ecosystem live-status opt-in
+
+- **`hydra-umc.project.json`** declares its real `service.port` (1883,
+  the default MQTT/TCP listen port) - HYDRA-UMC-SERVER's ecosystem
+  status endpoint now does a real TCP-connect probe against it instead
+  of only reporting static manifest metadata. No `health_path` (this is
+  a raw MQTT/TCP protocol, not HTTP), so the probe is a bare connect.
+
+## [0.0.4] - Fixed after a live ecosystem bug audit
+
+- **`src/acl.ts`** - removed a dead source-comment reference. No functional
+  change - the surrounding security limitation remains self-contained.
+
+## [0.0.3] - Real, verifiable topic ACL and payload size limit
+
+- **`src/acl.ts`** (new) - real, verifiable per-client-ID-prefix topic ACL. `topicMatchesFilter()` is a real MQTT wildcard matcher (`+`/`#`) for a concrete PUBLISH topic. `isSubscriptionWithinScope()` is the check the promotion audit specifically asked for: a client's own SUBSCRIBE request is itself a filter that can carry `+`/`#`, so a segment-by-segment scope check proves a requested filter (e.g. `hydra/robots/#`) can never match more than an allow-rule (e.g. `hydra/robots/+/status`) actually granted - a naive "does it overlap" check would have let a client escalate its own subscription into someone else's topics. `isPublishAllowed()`/`isSubscribeAllowed()` are real default-deny: a client with no matching rule, or a rule that doesn't list the exact topic, is denied.
+- **`buildBroker(port, options)`** (`src/server.ts`) gained an optional `{ acl, maxPayloadBytes }` - both fully opt-in, unset means every pre-existing behavior (open access, unlimited payload) is unchanged. When set, `authorizePublish`/`authorizeSubscribe` hooks enforce them against Aedes for real.
+- **`MQTT_ACL_JSON`/`MAX_PAYLOAD_BYTES`** (new env vars, `main()`) - real production config, not just a library option only tests exercise. `parseAclConfig()` validates the JSON shape and fails startup loudly (not silently) on malformed config.
+- 22 new tests: `tests/acl.test.ts` (20, pure unit tests of the matching/scope/config-parsing logic) + `tests/acl-broker.test.ts` (9, real `mqtt` client against a real Aedes broker - a robot publishing/subscribing within its granted scope succeeds; a robot attempting a topic its rule never granted, an ID matching no rule at all, or an oversized payload all get real behavior verified, not assumed: **Aedes closes the whole connection** on a denied PUBLISH rather than NACKing just that message - found by running the test against the real broker, not by reading the docs; a denied SUBSCRIBE instead returns SUBACK reason 128, which this MQTT.js client surfaces as a real error) = 39 total, all passing.
+- Real verification beyond the test suite: built the actual `dist/server.cjs`, ran it with real `MQTT_ACL_JSON`/`MAX_PAYLOAD_BYTES` env vars, and connected real `mqtt` clients over a real socket - a robot publishing its own status succeeded, the same robot ID publishing to an ungranted topic got disconnected, and an oversized payload got disconnected too.
+- `.env.example` documents both new variables.
+
+## [0.0.2] - Fixed a real bug: the broker never actually accepted clients
+
+- **Real bug found and fixed**: Aedes 1.x moved persistence/mqemitter setup into an explicit async `broker.listen()` step (a real API change from the 0.x factory-function shape the original scaffold was written against). Without it, every real MQTT `CONNECT` reached the broker over a real TCP socket but silently hung until the client's own connack timeout fired - the broker looked "up" (the TCP port accepted connections) but no client could actually complete a session. Found via a real `mqtt` client timing out in this project's own tests, not by inspection - `mqtt_probe.mjs`/`mqtt_probe2.mjs` diagnostic scripts isolated it down to a missing `await broker.listen()` before the TCP listener starts.
+- **`src/server.ts`** refactored: broker construction now lives in an exported, async `buildBroker(port)` (awaits the real `broker.listen()` fix above) so tests can start a real broker on a test port without going through `main()`.
+- **`tests/server.test.ts`** - 4 real tests using the `mqtt` npm package (a real client, not a mock) against a real Aedes broker over a real TCP socket: CONNECT succeeds, a real PUBLISH is delivered to a real SUBSCRIBEd client, a client subscribed to a different topic does not receive it, and a real retained message is delivered to a client that subscribes afterward. These are exactly the tests that would have caught the `listen()` bug above had they existed sooner.
+- **`src/version.ts`** - added for consistency with the rest of the family (not yet wired into a broker-reported version string, since Aedes doesn't expose one in its own protocol responses the way OPC-UA's `buildInfo` or MTConnect's XML header do).
+- **`build.sh`/`build.bat`** - now run the real test suite (`npm test`, vitest) as a required step before compiling; a failing test fails the build.
+
+## [0.0.1] - Automatic version bump on build
+
+- Added `scripts/bump-version.mjs` (copied/adapted from HYDRA-UMC-SERVER's
+  own) and wired it into `package.json`'s `build` script - this project
+  no longer relies on a manual version edit before each real build, like
+  every other Node project in the ecosystem.
+
+## [0.0.0] - Initial scaffolding
+
+- **`src/server.ts`** - minimal real entry point. No broker logic yet - a real MQTT broker bridging this cell's own event stream lands in a later pass.
+- **`package.json`** - project metadata, no runtime dependencies yet.
+- **`build.sh` / `build.bat`** - `npm install && npm run build`.
+- **`dev.sh` / `dev.bat`** - run against source directly (no build step) for local development.
