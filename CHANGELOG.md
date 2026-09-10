@@ -26,7 +26,7 @@ semantic-versioning judgment calls:
 
 ## [0.0.9] - MQTT-01: bind authenticated identity to a real client-ID prefix
 
-- **MQTT-01 (found in an ecosystem-wide software-improvements audit, P1):**
+- **MQTT-01 (P1):**
   `credentialsAuthenticate` verified username/password only - `src/acl.ts`'s
   own rules key entirely off client ID prefix, and a client ID is
   client-chosen, unrelated to which credential authenticated it. A real,
@@ -44,8 +44,8 @@ semantic-versioning judgment calls:
   `npx vitest run` - 62/62 passing; `npx tsc --noEmit` clean.
 - **`buildBroker()` gained an opt-in `wsPort` option (`MQTT_WS_PORT` env var)**
   wiring a real second listener onto the SAME broker instance, alongside the
-  existing plain-TCP one - found in an ecosystem-wide software-improvements
-  audit: this README's own "Websockets Support" feature was listed as
+  existing plain-TCP one - found while auditing the
+  code: this README's own "Websockets Support" feature was listed as
   "planned - not implemented" with no `ws`/websocket dependency in
   `package.json` at all. Authentication/ACL/payload-limit hooks apply to a
   WS-connected client exactly as they do to a TCP one, since Aedes itself
@@ -139,14 +139,14 @@ semantic-versioning judgment calls:
   of only reporting static manifest metadata. No `health_path` (this is
   a raw MQTT/TCP protocol, not HTTP), so the probe is a bare connect.
 
-## [0.0.4] - Fixed after a live ecosystem bug audit
+## [0.0.4] - Fixed after auditing the code
 
 - **`src/acl.ts`** - removed a dead source-comment reference. No functional
   change - the surrounding security limitation remains self-contained.
 
 ## [0.0.3] - Real, verifiable topic ACL and payload size limit
 
-- **`src/acl.ts`** (new) - real, verifiable per-client-ID-prefix topic ACL. `topicMatchesFilter()` is a real MQTT wildcard matcher (`+`/`#`) for a concrete PUBLISH topic. `isSubscriptionWithinScope()` is the check the promotion audit specifically asked for: a client's own SUBSCRIBE request is itself a filter that can carry `+`/`#`, so a segment-by-segment scope check proves a requested filter (e.g. `hydra/robots/#`) can never match more than an allow-rule (e.g. `hydra/robots/+/status`) actually granted - a naive "does it overlap" check would have let a client escalate its own subscription into someone else's topics. `isPublishAllowed()`/`isSubscribeAllowed()` are real default-deny: a client with no matching rule, or a rule that doesn't list the exact topic, is denied.
+- **`src/acl.ts`** (new) - real, verifiable per-client-ID-prefix topic ACL. `topicMatchesFilter()` is a real MQTT wildcard matcher (`+`/`#`) for a concrete PUBLISH topic. `isSubscriptionWithinScope()` is the check specifically called for here: a client's own SUBSCRIBE request is itself a filter that can carry `+`/`#`, so a segment-by-segment scope check proves a requested filter (e.g. `hydra/robots/#`) can never match more than an allow-rule (e.g. `hydra/robots/+/status`) actually granted - a naive "does it overlap" check would have let a client escalate its own subscription into someone else's topics. `isPublishAllowed()`/`isSubscribeAllowed()` are real default-deny: a client with no matching rule, or a rule that doesn't list the exact topic, is denied.
 - **`buildBroker(port, options)`** (`src/server.ts`) gained an optional `{ acl, maxPayloadBytes }` - both fully opt-in, unset means every pre-existing behavior (open access, unlimited payload) is unchanged. When set, `authorizePublish`/`authorizeSubscribe` hooks enforce them against Aedes for real.
 - **`MQTT_ACL_JSON`/`MAX_PAYLOAD_BYTES`** (new env vars, `main()`) - real production config, not just a library option only tests exercise. `parseAclConfig()` validates the JSON shape and fails startup loudly (not silently) on malformed config.
 - 22 new tests: `tests/acl.test.ts` (20, pure unit tests of the matching/scope/config-parsing logic) + `tests/acl-broker.test.ts` (9, real `mqtt` client against a real Aedes broker - a robot publishing/subscribing within its granted scope succeeds; a robot attempting a topic its rule never granted, an ID matching no rule at all, or an oversized payload all get real behavior verified, not assumed: **Aedes closes the whole connection** on a denied PUBLISH rather than NACKing just that message - found by running the test against the real broker, not by reading the docs; a denied SUBSCRIBE instead returns SUBACK reason 128, which this MQTT.js client surfaces as a real error) = 39 total, all passing.
