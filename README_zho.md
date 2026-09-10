@@ -62,7 +62,7 @@ wiring is defined"），所以今天没有任何东西发布到 `hydra/swarm/...
 
 * **为何这是 HYDRA-UMC-GATEWAY-INDUSTRIAL 的兄弟项目，而非子模块。** 每个协议适配器都是可独立部署/重启的进程——一次 Broker 问题永远不会导致与其并行运行的 OPC-UA 或 MTConnect 适配器宕机。
 * **为何是一个真实的 MQTT Broker，而非仅仅是向外部 Broker 发布消息的客户端。** 拥有该 Broker 意味着该单元自身的事件流（机器人状态变化、告警）可供工厂网络上的任何 MQTT 订阅者使用，而无需依赖某个独立的、外部管理的 Broker 是否可达。
-* **为何入口点今天只打印身份/版本，在健康检查监听器启动后才退出。** 处于脚手架（scaffolding）阶段，与父项目自身 README 中的理由相同——一个真正的 Broker 本质上是长期运行的。
+* **为何 `src/server.ts` 刻意保持精简。** Aedes 负责实际的 MQTT 协议工作（CONNECT/PUBLISH/SUBSCRIBE 帧、QoS、保留消息和遗嘱消息）；本文件只是 Aedes 所需的普通 TCP 传输、可选的 MQTT-over-WebSocket 监听器、ACL/认证/载荷限制的接线，以及进程级日志。`buildBroker()` 被导出，以便测试在临时端口上启动真实的 broker 并用真实的 MQTT 客户端连接它。
 * **这如何融入生态系统的其余部分。** 作为 HYDRA-UMC-GATEWAY-INDUSTRIAL 下的同级服务——将 HYDRA-UMC-SERVER 自身的事件流桥接到真实的 MQTT 主题上。
 * **在这里发现并修复了一个真实的 bug：broker 实际上从未真正接受过任何客户端。** Aedes 1.x 将持久化/mqemitter 的初始化移到了一个显式的异步步骤 `broker.listen()` 中（相对于 0.x 的工厂函数形式，这是一次真实的 API 变更）——如果没有这一步，一个真实的 `CONNECT` 会通过真实的 TCP 套接字到达 broker，但会静默挂起，直到客户端自身的 connack 超时触发为止——broker 看起来是“正常”的（端口能接受连接），但没有任何客户端能真正完成会话。这是通过一个真实的 `mqtt` 客户端在本项目自己的测试中超时而发现的，而非通过代码审查。`tests/server.test.ts` 现在使用真实的 MQTT 客户端库，通过真实的套接字连接真实的 broker——CONNECT、PUBLISH 投递、主题隔离、保留消息，全部都是真实测试。
 * **为何主题 ACL 检查的是订阅的*范围*，而不仅仅是过滤器的重叠。** 客户端自身的 SUBSCRIBE 请求本身就是一个过滤器，可以携带 `+`/`#` 通配符——如果简单地检查“请求的过滤器是否与允许的过滤器重叠”，就会让客户端用比其规则实际授予的（例如 `hydra/robots/+/status`）更宽的通配符（例如 `hydra/robots/#`）进行订阅，从而在不知情的情况下看到从未被授权访问的主题。`src/acl.ts` 中的 `isSubscriptionWithinScope()` 函数改为执行真实的、逐段的检查——并通过真实测试得到验证，其中一个测试正是机器人自身尝试用通配符 SUBSCRIBE 扩大其访问范围，结果被拒绝。
@@ -79,7 +79,7 @@ HYDRA-UMC-MQTT-BROKER/
 ├── src/         # 源代码（Node/TypeScript —— Broker、桥接、安全）
 ├── tests/       # Vitest 测试套件——ACL、认证与 broker/桥接行为
 ├── docs/        # 文档与主题目录
-├── build/       # 编译输出（npm run build）
+├── dist/        # 打包输出（npm run build -> dist/server.cjs，已 gitignore）
 ├── images/      # 媒体与图表
 ├── scripts/     # 实用脚本（bump-version.mjs）
 ├── tools/       # ci_validate.py——CI 使用的 manifest/CHANGELOG/docs 校验

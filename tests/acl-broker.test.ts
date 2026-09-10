@@ -6,8 +6,8 @@
 // Real, protocol-level negative tests - a real "mqtt" client over a real
 // TCP socket attempting a disallowed PUBLISH, a scope-broadening SUBSCRIBE,
 // and an oversized payload, against a real Aedes broker with buildBroker's
-// new opt-in ACL/maxPayloadBytes enabled. This is the "Evidencia" the
-// promotion audit asks for - real rejection, not just unit math.
+// new opt-in ACL/maxPayloadBytes enabled. This is real end-to-end
+// evidence - real rejection, not just unit math.
 // =============================================================================
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";

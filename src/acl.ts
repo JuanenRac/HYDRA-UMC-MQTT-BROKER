@@ -5,7 +5,7 @@
 //
 // Real, verifiable topic ACL - turns "clients can only publish/subscribe to
 // their own topics" from a README promise into checkable config, matching
-// the promotion audit's own call for this ("wildcards can't grant broader
+// the promotion criterion call for this ("wildcards can't grant broader
 // access by mistake"). Identity here is the MQTT client ID's prefix - a
 // real, honest v0 limitation, not TLS client certs or username/password: a
 // client can claim any ID it likes over plain TCP, so this ACL is real
@@ -51,7 +51,7 @@ export function topicMatchesFilter(topic: TopicFilter, filter: TopicFilter): boo
 }
 
 /**
- * The real check the promotion audit specifically calls out: a client's own
+ * The real check needed here: a client's own
  * SUBSCRIBE request is ITSELF a filter, so it can carry `+`/`#` wildcards a
  * naive "does it overlap the allowed filter" check would wrongly authorize.
  * A requested filter is within scope only if it can never match a broader
