@@ -24,7 +24,7 @@ Each credential also declares its own `clientIdPrefix`, and CONNECT is
 rejected unless the client's declared ID actually starts with it - a valid,
 lower-privilege credential cannot simply choose a different, more privileged
 client ID and inherit `MQTT_ACL_JSON`'s permissions for it (found and fixed
-in an ecosystem-wide software-improvements audit). Pair the two: ACL rules
+while auditing the code). Pair the two: ACL rules
 restrict topics, authentication requires a real credential, and the
 credential's own prefix ties that identity to the ACL rule it is actually
 allowed to use. The transport is
