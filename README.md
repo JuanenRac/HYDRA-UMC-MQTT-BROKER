@@ -60,7 +60,7 @@ shape.
 
 * **Why this is a sibling, not a submodule, of HYDRA-UMC-GATEWAY-INDUSTRIAL.** Each protocol adapter is a separately deployable/restartable process - a broker issue never takes down the OPC-UA or MTConnect adapters running alongside it.
 * **Why a real MQTT broker, not just a client publishing to an external one.** Owning the broker means this cell's own event stream (robot state changes, alarms) is available to any MQTT subscriber on the factory network without depending on a separate, externally-managed broker being reachable.
-* **Why the entry point only prints identity/version, exits after a health-check listener comes up.** Andamiaje (scaffolding) stage, same reasoning as the parent's own README - a real broker is long-running by nature.
+* **Why `src/server.ts` is intentionally thin.** Aedes does the actual MQTT protocol work (CONNECT/PUBLISH/SUBSCRIBE framing, QoS, retained and will messages); this file is just the plain-TCP transport Aedes needs, the optional MQTT-over-WebSocket listener, the ACL/auth/payload-limit wiring, and process-level logging. `buildBroker()` is exported so tests start a real broker on an ephemeral port and connect real MQTT clients against it.
 * **How this fits the rest of the ecosystem.** A sibling service under HYDRA-UMC-GATEWAY-INDUSTRIAL - bridges HYDRA-UMC-SERVER's own event stream onto real MQTT topics.
 * **A real bug was found and fixed here: the broker never actually accepted clients.** Aedes 1.x moved persistence/mqemitter setup into an explicit async `broker.listen()` step (a real API change from the 0.x factory-function shape); without it, a real `CONNECT` reached the broker over a real TCP socket but hung silently until the client's own connack timeout fired - the broker looked "up" (the port accepted sockets) but no client could ever complete a session. Found via a real `mqtt` client timing out in this project's own tests, not by inspection. `tests/server.test.ts` now connects a real MQTT client library against a real broker over a real socket - CONNECT, PUBLISH delivery, topic isolation, and retained messages are all exercised for real.
 * **Why the topic ACL checks subscription *scope*, not just filter overlap.** A client's own SUBSCRIBE request is itself a filter and can carry `+`/`#` wildcards - naively checking "does the requested filter overlap the allowed one" would let a client subscribe with a broader wildcard (e.g. `hydra/robots/#`) than its rule actually grants (e.g. `hydra/robots/+/status`) and silently see topics it was never authorized for. `src/acl.ts`'s `isSubscriptionWithinScope()` does a real, segment-by-segment check instead - proven with real tests, including one where a robot's own wildcard SUBSCRIBE attempt to escalate its scope is denied.
@@ -77,7 +77,7 @@ HYDRA-UMC-MQTT-BROKER/
 ├── src/         # Source code (Node/TypeScript - Broker, Bridge, Security)
 ├── tests/       # Vitest suite - ACL, auth, and broker/bridge behavior
 ├── docs/        # Documentation and topic catalog
-├── build/       # Compiled output (npm run build)
+├── dist/        # Bundled output (npm run build -> dist/server.cjs, gitignored)
 ├── images/      # Media and diagrams
 ├── scripts/     # Utility scripts (bump-version.mjs)
 ├── tools/       # ci_validate.py - manifest/CHANGELOG/docs validation used by CI

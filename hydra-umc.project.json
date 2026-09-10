@@ -7,7 +7,9 @@
   "stack": "node",
   "technologies": [
     "Node.js",
-    "Aedes MQTT broker"
+    "TypeScript",
+    "Aedes MQTT broker (MQTT 3.1.1)",
+    "MQTT over WebSockets (ws)"
   ],
   "deployment_target": "cm5",
   "maturity": "established",

@@ -56,7 +56,7 @@ export interface BuildBrokerOptions {
    * one matching username/password pair before any ACL is evaluated. */
   credentials?: BrokerCredential[];
   /** Opt-in MQTT-over-WebSocket listener, alongside the existing plain-TCP
-   * one - found in an ecosystem-wide software-improvements audit: this
+   * one - this
    * README's own "Websockets Support" feature was listed as "planned -
    * not implemented" with no WS dependency in package.json at all. Wraps
    * the SAME broker instance in a real HTTP+WS listener without touching

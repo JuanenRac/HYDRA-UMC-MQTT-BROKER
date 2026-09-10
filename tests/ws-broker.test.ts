@@ -4,8 +4,7 @@
 // GPL-3.0 - see LICENSE
 //
 // Real protocol-level tests for the opt-in MQTT-over-WebSocket listener
-// (found missing entirely in an ecosystem-wide software-improvements
-// audit) - starts a real Aedes broker with `wsPort` set and connects a
+// (previously untested) - starts a real Aedes broker with `wsPort` set and connects a
 // real MQTT client (the "mqtt" npm package, over a real `ws://` URL) -
 // proving CONNECT/PUBLISH/SUBSCRIBE actually work over WebSocket, not just
 // that `buildBroker()` returns a truthy `wsServer` handle. Same "real

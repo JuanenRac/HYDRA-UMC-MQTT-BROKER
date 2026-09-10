@@ -15,7 +15,7 @@ export interface BrokerCredential {
   username: string;
   password: string;
   /**
-   * MQTT-01 (found in an ecosystem-wide software-improvements audit, P1):
+   * MQTT-01 (P1):
    * a client ID is client-chosen and unrelated to which username/password
    * it presented - src/acl.ts's own rules key entirely off client ID
    * prefix. Without this field, a low-privilege but VALID user could
