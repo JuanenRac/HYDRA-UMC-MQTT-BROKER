@@ -16,6 +16,10 @@
 
 ---
 
+**Honesty check - what actually runs today:** the broker transport (`src/server.ts`), the topic ACL (`src/acl.ts`), and the CONNECT authentication (`src/auth.ts`) are real and tested (62 tests passing across 6 files: `tests/server.test.ts`, `tests/acl.test.ts`, `tests/acl-broker.test.ts`, `tests/auth.test.ts`, `tests/auth-broker.test.ts`, `tests/ws-broker.test.ts`), and `tsc --noEmit` is clean. These aren't isolated unit tests against mocked internals - `tests/server.test.ts` connects a real `mqtt` client library over a real TCP socket to a real running Aedes broker, and that's how a real bug (Aedes 1.x's `broker.listen()` step being skipped, silently hanging every CONNECT) was actually found. The MQTT-over-WebSocket listener and the payload-size limit are the same way: real, opt-in, and broker-tested. What is genuinely not built: mDNS/Home Assistant discovery is planned only - `server.ts` is a plain TCP listener with no discovery service of any kind - and the `hydra/swarm/...` topic shape in the diagram below is the intended future shape once HYDRA-UMC-SERVER's own state is bridged onto MQTT, which hasn't happened yet; only the 5 external machine bridges' `hydra/bridges/<name>/...` topics are real and wired today. See `CHANGELOG.md` for exactly what has shipped so far.
+
+---
+
 ## 1. 🛠️ TECHNICAL OVERVIEW
 
 **HYDRA-UMC-MQTT-BROKER** provides a lightweight, asynchronous messaging interface for the HYDRA-UMC ecosystem. It allows external IoT devices, dashboards, and home automation systems (like Home Assistant) to subscribe to robot telemetry and publish commands.

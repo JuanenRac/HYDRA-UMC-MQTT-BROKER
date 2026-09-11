@@ -16,6 +16,10 @@
 
 ---
 
+**正直な現状確認 - 今日実際に動くもの:** ブローカーのトランスポート層(`src/server.ts`)、トピック ACL(`src/acl.ts`)、そして CONNECT 認証(`src/auth.ts`)は本物であり、テスト済みである(6 ファイルにわたり 62 件のテストが成功: `tests/server.test.ts`、`tests/acl.test.ts`、`tests/acl-broker.test.ts`、`tests/auth.test.ts`、`tests/auth-broker.test.ts`、`tests/ws-broker.test.ts`)。`tsc --noEmit` もクリーンである。これらはモック化された内部実装に対する分離された単体テストではない——`tests/server.test.ts` は本物の TCP ソケットを介して本物の `mqtt` クライアントライブラリを、実際に稼働している本物の Aedes ブローカーに接続しており、まさにこの方法で実際のバグ(Aedes 1.x の `broker.listen()` ステップが省略され、すべての CONNECT が静かにハングしていた問題)が実際に発見された。MQTT over WebSocket リスナーとペイロードサイズ制限も同様である: 本物で、オプトインであり、ブローカーレベルでテストされている。実際にまだ構築されていないもの: mDNS/Home Assistant ディスカバリーは計画段階にすぎない——`server.ts` は現在、いかなるディスカバリーサービスも持たない単純な TCP リスナーである——そして下記の図にある `hydra/swarm/...` というトピック形状は、HYDRA-UMC-SERVER 自身の状態が MQTT にブリッジされた後に想定される将来の形であり、それはまだ実現していない。今日実際に本物として実装され配線されているのは、5 つの外部マシンブリッジの `hydra/bridges/<name>/...` トピックのみである。これまでに何が実際に出荷されたかは `CHANGELOG.md` を参照。
+
+---
+
 ## 1. 🛠️ 技術概要
 
 **HYDRA-UMC-MQTT-BROKER** は、HYDRA-UMC エコシステム向けの軽量な非同期
