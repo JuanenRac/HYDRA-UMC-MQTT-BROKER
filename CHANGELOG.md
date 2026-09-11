@@ -24,6 +24,19 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.1.0] - Honesty check section in every README
+
+Added a "Honesty check" paragraph right after the badges in `README.md`
+and all 6 translated READMEs, naming the real, tested modules
+(`src/server.ts`, `src/acl.ts`, `src/auth.ts`) and the real test count
+(62 passing across 6 files). States plainly that mDNS/Home Assistant
+discovery is planned only with zero code behind it, and that the
+`hydra/swarm/...` topic shape in the flow diagram is the intended
+future shape once HYDRA-UMC-SERVER's own state is bridged onto MQTT -
+only the 5 external machine bridges' `hydra/bridges/<name>/...` topics
+are real and wired today. Documents the real, current state of what's
+implemented vs. planned; no behavior changed.
+
 ## [0.0.9] - MQTT-01: bind authenticated identity to a real client-ID prefix
 
 - **MQTT-01 (P1):**

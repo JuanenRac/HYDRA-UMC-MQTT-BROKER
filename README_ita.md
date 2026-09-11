@@ -16,6 +16,10 @@
 
 ---
 
+**Controllo di onestà - cosa funziona davvero oggi:** il trasporto del broker (`src/server.ts`), l'ACL dei topic (`src/acl.ts`), e l'autenticazione CONNECT (`src/auth.ts`) sono reali e testati (62 test superati in 6 file: `tests/server.test.ts`, `tests/acl.test.ts`, `tests/acl-broker.test.ts`, `tests/auth.test.ts`, `tests/auth-broker.test.ts`, `tests/ws-broker.test.ts`), e `tsc --noEmit` è pulito. Non sono test unitari isolati contro interni simulati - `tests/server.test.ts` collega una vera libreria client `mqtt` tramite un vero socket TCP a un vero broker Aedes in esecuzione, ed è così che è stato trovato un vero bug (il passaggio `broker.listen()` di Aedes 1.x saltato, bloccando silenziosamente ogni CONNECT). Il listener MQTT-su-WebSocket e il limite di dimensione del payload funzionano allo stesso modo: reali, opzionali e testati contro il broker. Ciò che non è realmente costruito: la discovery mDNS/Home Assistant è solo pianificata - `server.ts` è un semplice listener TCP senza alcun servizio di discovery - e la forma di topic `hydra/swarm/...` nel diagramma sottostante è la forma futura prevista una volta che lo stato di HYDRA-UMC-SERVER sarà collegato a MQTT, cosa che non è ancora avvenuta; solo i topic `hydra/bridges/<name>/...` dei 5 bridge di macchine esterne sono reali e cablati oggi. Vedi `CHANGELOG.md` per ciò che è stato consegnato esattamente finora.
+
+---
+
 ## 1. 🛠️ PANORAMICA TECNICA
 
 **HYDRA-UMC-MQTT-BROKER** fornisce un'interfaccia di messaggistica asincrona e leggera per l'ecosistema HYDRA-UMC. Consente a dispositivi IoT esterni, dashboard e sistemi di automazione domestica (come Home Assistant) di sottoscriversi alla telemetria del robot e pubblicare comandi.
