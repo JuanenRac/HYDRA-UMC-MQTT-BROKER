@@ -34,6 +34,7 @@ It implements the MQTT 3.1.1 standard (via Aedes, verified live - see Architectu
 * 🪪 **Client Authentication:** Optional real MQTT username/password CONNECT authentication (`MQTT_AUTH_JSON`) gives the ACL a verified session identity - each credential's own required `clientIdPrefix` is enforced too, so a valid but lower-privilege credential cannot simply choose a different, more privileged client ID to inherit its ACL permissions. *(implemented; pair it with ACL)*
 * 📏 **Payload Size Limit:** A real, opt-in cap on PUBLISH payload size, configurable via `MAX_PAYLOAD_BYTES`. *(implemented)*
 * ⚡ **Websockets Support:** MQTT-over-WebSockets for browser-based clients - the same broker instance, a real opt-in second listener alongside the existing plain-TCP one (`wsPort` option / `MQTT_WS_PORT` env var, default port 8083). *(implemented)*
+* ⏳ **Retained Message Expiry:** A real, opt-in TTL for retained messages (`retainedTtlMs` option / `MQTT_RETAINED_TTL_MS` env var) - a retained state older than the limit is actively cleared instead of being handed to every future subscriber forever. *(implemented)*
 
 ---
 
