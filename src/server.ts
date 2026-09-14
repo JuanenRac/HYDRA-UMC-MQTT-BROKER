@@ -55,6 +55,19 @@ export interface BuildBrokerOptions {
   /** Opt-in MQTT CONNECT credentials. When supplied, a client must provide
    * one matching username/password pair before any ACL is evaluated. */
   credentials?: BrokerCredential[];
+  /** I41: opt-in real expiry for retained messages. Aedes retains a
+   * PUBLISH with `retain: true` indefinitely by default, with no concept
+   * of "this state is too old to still hand to a new subscriber" - a
+   * bridge/tool that died mid-session with a stale command retained
+   * would keep replaying that exact command to every future subscriber
+   * forever. H051 already defends the CLIENT side of this (a bridge must
+   * never blindly trust a retained replay as a live command); this is
+   * the complementary broker-side policy - a retained message older than
+   * `retainedTtlMs` is actively cleared (a real empty-payload retained
+   * PUBLISH, the standard MQTT way to clear one) instead of living on
+   * forever. Omitted (the default) means unlimited retained lifetime,
+   * exactly as before this option existed. */
+  retainedTtlMs?: number;
   /** Opt-in MQTT-over-WebSocket listener, alongside the existing plain-TCP
    * one - this
    * README's own "Websockets Support" feature was listed as "planned -
@@ -130,6 +143,12 @@ export async function buildBroker(
   const wsPort = options.wsPort === true ? DEFAULT_WS_PORT : options.wsPort;
   if (wsPort !== undefined && (!Number.isInteger(wsPort) || wsPort < 0 || wsPort > 65535)) {
     throw new RangeError("wsPort must be an integer from 0 to 65535");
+  }
+  if (
+    options.retainedTtlMs !== undefined &&
+    (!Number.isSafeInteger(options.retainedTtlMs) || options.retainedTtlMs <= 0)
+  ) {
+    throw new RangeError("retainedTtlMs must be a positive safe integer");
   }
   const broker = new Aedes({ id: "hydra-umc-mqtt-broker" });
   // Aedes 1.x moved persistence/mqemitter setup into an explicit async
@@ -222,6 +241,55 @@ export async function buildBroker(
     }
   });
 
+  if (options.retainedTtlMs !== undefined) {
+    const ttl = options.retainedTtlMs;
+    // Real per-topic "when was this retained state last (re)set" clock -
+    // Aedes's own persistence layer tracks retained payloads but not
+    // their age, so this is the smallest real addition needed rather
+    // than reaching into that layer's own undocumented internals.
+    const retainedSetAt = new Map<string, number>();
+    broker.on("publish", (packet: AedesPublishPacket, client: Client | null) => {
+      if (!packet.retain) return;
+      const hasPayload = Buffer.isBuffer(packet.payload)
+        ? packet.payload.length > 0
+        : Buffer.byteLength(String(packet.payload ?? "")) > 0;
+      if (hasPayload) {
+        // A real client set/refreshed retained state - restart its clock.
+        // The broker's OWN clearing publish below also has client===null
+        // and an empty payload, so it can never re-arm an entry it just
+        // expired.
+        if (client) retainedSetAt.set(packet.topic, Date.now());
+      } else {
+        // Cleared (by a real client, or by this same sweep) - nothing
+        // left to expire.
+        retainedSetAt.delete(packet.topic);
+      }
+    });
+    const sweep = setInterval(() => {
+      const now = Date.now();
+      for (const [topic, setAt] of retainedSetAt) {
+        if (now - setAt < ttl) continue;
+        retainedSetAt.delete(topic);
+        broker.publish(
+          { cmd: "publish", topic, payload: Buffer.alloc(0), qos: 0, retain: true, dup: false },
+          (err) => {
+            if (err) {
+              console.error(`[HYDRA-UMC-MQTT-BROKER] failed to expire retained message on '${topic}': ${err.message}`);
+            } else {
+              console.log(`[HYDRA-UMC-MQTT-BROKER] expired retained message on '${topic}' (older than ${ttl}ms)`);
+            }
+          },
+        );
+      }
+      // A sweep interval longer than the TTL itself would let a message
+      // outlive its own limit by up to (interval - ttl) before this ever
+      // notices it - capping at `ttl` keeps the worst-case delay bounded
+      // by the TTL, never by an unrelated fixed cadence.
+    }, Math.min(ttl, 30_000));
+    sweep.unref();
+    broker.on("closed", () => clearInterval(sweep));
+  }
+
   server.listen(port, "0.0.0.0");
 
   let wsServer: HttpServer | undefined;
@@ -292,6 +360,15 @@ function loadBrokerOptionsFromEnv(): BuildBrokerOptions {
       process.exit(1);
     }
     options.wsPort = wsPort;
+  }
+
+  if (process.env.MQTT_RETAINED_TTL_MS) {
+    const retainedTtlMs = Number(process.env.MQTT_RETAINED_TTL_MS);
+    if (!Number.isSafeInteger(retainedTtlMs) || retainedTtlMs <= 0) {
+      console.error(`[HYDRA-UMC-MQTT-BROKER] MQTT_RETAINED_TTL_MS must be a positive integer, got: ${process.env.MQTT_RETAINED_TTL_MS}`);
+      process.exit(1);
+    }
+    options.retainedTtlMs = retainedTtlMs;
   }
 
   return options;

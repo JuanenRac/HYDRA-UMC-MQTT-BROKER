@@ -37,6 +37,7 @@ Assistant）能够订阅机器人遥测数据并发布指令。
 * 🪪 **客户端认证：** 可选的真实 MQTT CONNECT 用户名/密码认证（`MQTT_AUTH_JSON`）为 ACL 提供经过验证的会话身份——同时也会强制执行每个凭据自身要求的 `clientIdPrefix`,这样一个有效但权限较低的凭据就不能简单地选择另一个权限更高的客户端 ID 来继承其 ACL 权限。*(已实现；应与 ACL 配合使用)*
 * 📏 **载荷大小限制：** 对 PUBLISH 载荷大小的真实、可选的上限，可通过 `MAX_PAYLOAD_BYTES` 配置。*(已实现)*
 * ⚡ **WebSocket 支持：** 面向浏览器端客户端的 MQTT over WebSocket——同一个 broker 实例上真实存在、可选启用的第二个监听器，与现有的纯 TCP 监听器并存(`wsPort` 选项 / `MQTT_WS_PORT` 环境变量，默认端口 8083)。*（已实现）*
+* ⏳ **保留消息过期：** 面向保留(retained)消息的真实、可选 TTL(`retainedTtlMs` 选项 / `MQTT_RETAINED_TTL_MS` 环境变量)——超过该期限的保留状态会被主动清除，而不是永远发送给此后的每一个订阅者。*（已实现）*
 
 ---
 
