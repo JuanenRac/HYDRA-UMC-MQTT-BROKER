@@ -38,6 +38,7 @@ Assistant）能够订阅机器人遥测数据并发布指令。
 * 📏 **载荷大小限制：** 对 PUBLISH 载荷大小的真实、可选的上限，可通过 `MAX_PAYLOAD_BYTES` 配置。*(已实现)*
 * ⚡ **WebSocket 支持：** 面向浏览器端客户端的 MQTT over WebSocket——同一个 broker 实例上真实存在、可选启用的第二个监听器，与现有的纯 TCP 监听器并存(`wsPort` 选项 / `MQTT_WS_PORT` 环境变量，默认端口 8083)。*（已实现）*
 * ⏳ **保留消息过期：** 面向保留(retained)消息的真实、可选 TTL(`retainedTtlMs` 选项 / `MQTT_RETAINED_TTL_MS` 环境变量)——超过该期限的保留状态会被主动清除，而不是永远发送给此后的每一个订阅者。*（已实现）*
+* 📊 **Prometheus 指标：** 真实、可选的 `GET /metrics` 监听器(`metricsPort` 选项 / `MQTT_METRICS_PORT` 环境变量，默认端口 9883)，以标准 Prometheus 文本格式报告已连接客户端数、收到的消息总数，以及总的进/出字节数。*（已实现）*
 
 ---
 

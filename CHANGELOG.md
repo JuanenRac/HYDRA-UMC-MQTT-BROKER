@@ -24,6 +24,21 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.1.2]
+
+- **Prometheus-format metrics exporter (`metricsPort`, `MQTT_METRICS_PORT`).**
+  Real, always-maintained counters for this broker's own operational
+  health - connected clients (TCP + WebSocket), total messages received
+  from real clients, and total bytes read/written across every client
+  connection (straight from Node's own per-socket counters, so it holds
+  for the plain-TCP and WebSocket listeners alike). Exposed on a
+  dedicated `GET /metrics` HTTP listener in the standard Prometheus
+  exposition text format, so any off-the-shelf Prometheus/Grafana setup
+  can scrape this broker with zero custom parsing. A separate port from
+  both MQTT listeners so scraping never shares a port with real MQTT
+  traffic. Omitted (the default) starts no metrics listener at all,
+  unchanged from before this option existed.
+
 ## [0.1.1]
 
 - **I41: opt-in real expiry for retained messages (`retainedTtlMs`).**
