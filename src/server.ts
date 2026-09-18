@@ -31,6 +31,7 @@ import {
   credentialsAuthenticate,
   parseCredentialsConfig,
 } from "./auth.js";
+import { MetricsRegistry } from "./metrics.js";
 
 // 1883 is the IANA-registered plain-MQTT port (8883 is the TLS variant) -
 // kept as the default here so any off-the-shelf MQTT client (mosquitto_sub,
@@ -43,6 +44,13 @@ const DEFAULT_PORT = Number(process.env.PORT) || 1883;
 // client pointed at this broker with zero configuration lands on the same
 // port a real operator would already expect.
 const DEFAULT_WS_PORT = 8083;
+
+// A dedicated metrics port (distinct from both MQTT listeners above) so a
+// Prometheus scrape target never shares a port with real MQTT traffic -
+// 9883 keeps the same "883" family as 1883/8083 for this broker while
+// staying clear of node_exporter's own 9100 default and other common
+// exporters.
+const DEFAULT_METRICS_PORT = 9883;
 
 export interface BuildBrokerOptions {
   /** Real, verifiable per-client-ID-prefix topic ACL (see acl.ts). Omitted
@@ -79,6 +87,14 @@ export interface BuildBrokerOptions {
    * before this option existed - `true` uses `DEFAULT_WS_PORT`, a number
    * picks the port explicitly. */
   wsPort?: number | true;
+  /** Opt-in Prometheus-format metrics HTTP listener, serving `GET /metrics`
+   * with real connected-client, message, and byte-in/out counters (see
+   * metrics.ts). A separate listener rather than a route on the WS/MQTT
+   * HTTP server above so metrics scraping never shares a port with real
+   * MQTT-over-WS traffic. Omitted (the default) starts no metrics listener
+   * at all, unchanged from before this option existed - `true` uses
+   * `DEFAULT_METRICS_PORT`, a number picks the port explicitly. */
+  metricsPort?: number | true;
 }
 
 // Adapts one `ws` connection into the real Duplex stream `broker.handle()`
@@ -130,7 +146,7 @@ function wsToDuplex(socket: WebSocket): Duplex {
 export async function buildBroker(
   port: number = DEFAULT_PORT,
   options: BuildBrokerOptions = {},
-): Promise<{ broker: Aedes; server: Server; wsServer?: HttpServer }> {
+): Promise<{ broker: Aedes; server: Server; wsServer?: HttpServer; metricsServer?: HttpServer; metrics: MetricsRegistry }> {
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
     throw new RangeError("port must be an integer from 0 to 65535");
   }
@@ -144,12 +160,23 @@ export async function buildBroker(
   if (wsPort !== undefined && (!Number.isInteger(wsPort) || wsPort < 0 || wsPort > 65535)) {
     throw new RangeError("wsPort must be an integer from 0 to 65535");
   }
+  const metricsPort = options.metricsPort === true ? DEFAULT_METRICS_PORT : options.metricsPort;
+  if (
+    metricsPort !== undefined &&
+    (!Number.isInteger(metricsPort) || metricsPort < 0 || metricsPort > 65535)
+  ) {
+    throw new RangeError("metricsPort must be an integer from 0 to 65535");
+  }
   if (
     options.retainedTtlMs !== undefined &&
     (!Number.isSafeInteger(options.retainedTtlMs) || options.retainedTtlMs <= 0)
   ) {
     throw new RangeError("retainedTtlMs must be a positive safe integer");
   }
+  // Real counters, always maintained regardless of whether `metricsPort` is
+  // set - a caller can read `metrics.snapshot()` directly (as tests below
+  // do) even with no HTTP listener running.
+  const metrics = new MetricsRegistry();
   const broker = new Aedes({ id: "hydra-umc-mqtt-broker" });
   // Aedes 1.x moved persistence/mqemitter setup into an explicit async
   // listen() step (a real, undocumented-in-the-original-scaffold change
@@ -220,6 +247,10 @@ export async function buildBroker(
   }
 
   const server = createServer(broker.handle);
+  // Real per-connection byte counts, straight from Node's own `net.Socket`
+  // (`bytesRead`/`bytesWritten`) - counts actual wire traffic for the
+  // plain-TCP listener, independent of MQTT-level payload sizes.
+  server.on("connection", (socket) => metrics.trackSocket(socket));
 
   // Aedes emits these on its own event bus (not Node's `EventEmitter` types
   // from `net`), useful here purely as startup-visible proof the broker is
@@ -227,17 +258,22 @@ export async function buildBroker(
   // is open.
   broker.on("client", (client: Client) => {
     console.log(`[HYDRA-UMC-MQTT-BROKER] client connected: ${client?.id ?? "(unknown)"}`);
+    metrics.clientConnected();
   });
 
   broker.on("clientDisconnect", (client: Client) => {
     console.log(`[HYDRA-UMC-MQTT-BROKER] client disconnected: ${client?.id ?? "(unknown)"}`);
+    metrics.clientDisconnected();
   });
 
   broker.on("publish", (packet: AedesPublishPacket, client: Client | null) => {
     // client is null for messages the broker itself publishes (e.g. internal
-    // $SYS topics) - only log real client traffic to keep this readable.
+    // $SYS topics, or this broker's own retained-TTL expiry below) - only
+    // log/count real client traffic to keep this readable and the metric
+    // meaningful.
     if (client) {
       console.log(`[HYDRA-UMC-MQTT-BROKER] ${client.id} -> ${packet.topic}`);
+      metrics.messagePublished();
     }
   });
 
@@ -302,6 +338,10 @@ export async function buildBroker(
     // Duplex stream, the same shape `broker.handle()` already accepts
     // from the plain-TCP `net.Socket` above.
     wsServer = createHttpServer();
+    // Same real byte-counting as the plain-TCP listener above - the raw
+    // socket underneath a WS upgrade is still a real `net.Socket` with its
+    // own `bytesRead`/`bytesWritten`.
+    wsServer.on("connection", (socket) => metrics.trackSocket(socket));
     const wsSocketServer = new WebSocketServer({ server: wsServer });
     wsSocketServer.on("connection", (socket) => {
       const stream = wsToDuplex(socket);
@@ -316,7 +356,29 @@ export async function buildBroker(
     wsServer.listen(wsPort, "0.0.0.0");
   }
 
-  return { broker, server, wsServer };
+  let metricsServer: HttpServer | undefined;
+  if (metricsPort !== undefined) {
+    // Deliberately a separate, minimal HTTP server rather than a route
+    // bolted onto `wsServer` above - a Prometheus scraper's own port must
+    // never collide with real MQTT-over-WS client traffic, and this way
+    // metrics stay available even when `wsPort` itself is omitted.
+    metricsServer = createHttpServer((req, res) => {
+      if (req.method === "GET" && req.url === "/metrics") {
+        const body = metrics.renderPrometheus();
+        res.writeHead(200, {
+          "content-type": "text/plain; version=0.0.4; charset=utf-8",
+          "content-length": Buffer.byteLength(body),
+        });
+        res.end(body);
+        return;
+      }
+      res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+      res.end("not found\n");
+    });
+    metricsServer.listen(metricsPort, "0.0.0.0");
+  }
+
+  return { broker, server, wsServer, metricsServer, metrics };
 }
 
 // Real, opt-in production config for the authentication/ACL/payload-limit options above -
@@ -362,6 +424,15 @@ function loadBrokerOptionsFromEnv(): BuildBrokerOptions {
     options.wsPort = wsPort;
   }
 
+  if (process.env.MQTT_METRICS_PORT) {
+    const metricsPort = Number(process.env.MQTT_METRICS_PORT);
+    if (!Number.isInteger(metricsPort) || metricsPort < 0 || metricsPort > 65535) {
+      console.error(`[HYDRA-UMC-MQTT-BROKER] MQTT_METRICS_PORT must be an integer from 0 to 65535, got: ${process.env.MQTT_METRICS_PORT}`);
+      process.exit(1);
+    }
+    options.metricsPort = metricsPort;
+  }
+
   if (process.env.MQTT_RETAINED_TTL_MS) {
     const retainedTtlMs = Number(process.env.MQTT_RETAINED_TTL_MS);
     if (!Number.isSafeInteger(retainedTtlMs) || retainedTtlMs <= 0) {
@@ -376,7 +447,7 @@ function loadBrokerOptionsFromEnv(): BuildBrokerOptions {
 
 async function main() {
   const options = loadBrokerOptionsFromEnv();
-  const { broker, server, wsServer } = await buildBroker(DEFAULT_PORT, options);
+  const { broker, server, wsServer, metricsServer } = await buildBroker(DEFAULT_PORT, options);
 
   server.on("error", (err) => {
     console.error("[HYDRA-UMC-MQTT-BROKER] fatal transport error:", err);
@@ -392,12 +463,23 @@ async function main() {
       const wsPort = options.wsPort === true ? DEFAULT_WS_PORT : options.wsPort;
       console.log(` STATUS: Running on port ${wsPort} (MQTT/WebSocket)`);
     }
+    if (metricsServer) {
+      const metricsPort = options.metricsPort === true ? DEFAULT_METRICS_PORT : options.metricsPort;
+      console.log(` STATUS: Running on port ${metricsPort} (Prometheus metrics, GET /metrics)`);
+    }
     console.log("=================================================");
   });
 
   if (wsServer) {
     wsServer.on("error", (err) => {
       console.error("[HYDRA-UMC-MQTT-BROKER] fatal WebSocket transport error:", err);
+      process.exit(1);
+    });
+  }
+
+  if (metricsServer) {
+    metricsServer.on("error", (err) => {
+      console.error("[HYDRA-UMC-MQTT-BROKER] fatal metrics transport error:", err);
       process.exit(1);
     });
   }
@@ -409,11 +491,9 @@ async function main() {
   function shutdown() {
     console.log("[HYDRA-UMC-MQTT-BROKER] shutting down...");
     server.close(() => {
-      if (wsServer) {
-        wsServer.close(() => broker.close(() => process.exit(0)));
-      } else {
-        broker.close(() => process.exit(0));
-      }
+      const closeWsThen = (next: () => void) => (wsServer ? wsServer.close(() => next()) : next());
+      const closeMetricsThen = (next: () => void) => (metricsServer ? metricsServer.close(() => next()) : next());
+      closeWsThen(() => closeMetricsThen(() => broker.close(() => process.exit(0))));
     });
   }
 

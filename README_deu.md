@@ -35,6 +35,7 @@ Er implementiert den MQTT-3.1.1-Standard (via Aedes, live verifiziert - siehe Ar
 * 📏 **Payload-Größenbegrenzung:** Eine echte, optionale Obergrenze für die PUBLISH-Payload-Größe, konfigurierbar über `MAX_PAYLOAD_BYTES`. *(implementiert)*
 * ⚡ **Websockets-Unterstützung:** MQTT-over-WebSockets für browserbasierte Clients - derselbe Broker, ein echter, optionaler zweiter Listener neben dem bestehenden reinen TCP (Option `wsPort` / Umgebungsvariable `MQTT_WS_PORT`, Standardport 8083). *(implementiert)*
 * ⏳ **Ablauf für Retained Messages:** Eine echte, optionale TTL für Retained Messages (Option `retainedTtlMs` / Umgebungsvariable `MQTT_RETAINED_TTL_MS`) - ein zurückbehaltener Zustand, der älter als das Limit ist, wird aktiv gelöscht, statt jedem zukünftigen Abonnenten für immer ausgeliefert zu werden. *(implementiert)*
+* 📊 **Prometheus-Metriken:** Ein echter, optionaler `GET /metrics`-Listener (Option `metricsPort` / Umgebungsvariable `MQTT_METRICS_PORT`, Standardport 9883) meldet verbundene Clients, empfangene Nachrichten gesamt sowie Bytes ein/aus im Standard-Prometheus-Format. *(implementiert)*
 
 ---
 
