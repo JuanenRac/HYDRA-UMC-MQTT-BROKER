@@ -41,7 +41,7 @@ semantic-versioning judgment calls:
 
 ## [0.1.1]
 
-- **I41: opt-in real expiry for retained messages (`retainedTtlMs`).**
+- **Opt-in real expiry for retained messages (`retainedTtlMs`).**
   Aedes retains a `PUBLISH` with `retain: true` indefinitely by default -
   a bridge/tool that died mid-session with a stale command retained kept
   replaying that exact command to every future subscriber forever. A new
@@ -50,7 +50,7 @@ semantic-versioning judgment calls:
   it (a real empty-payload retained publish, the standard MQTT way) once
   it's older than the limit; a real re-publish restarts its own clock.
   Omitted (the default) means unlimited retained lifetime, unchanged
-  from before this option existed. This complements H051's own
+  from before this option existed. This complements a sibling bridge's own
   client-side defense (a bridge must never blindly trust a retained
   replay as a live command) with a broker-side one: retained state
   itself now has a real expiry. 5 new tests in
