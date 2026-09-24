@@ -63,12 +63,12 @@ export interface BuildBrokerOptions {
   /** Opt-in MQTT CONNECT credentials. When supplied, a client must provide
    * one matching username/password pair before any ACL is evaluated. */
   credentials?: BrokerCredential[];
-  /** I41: opt-in real expiry for retained messages. Aedes retains a
+  /** opt-in real expiry for retained messages. Aedes retains a
    * PUBLISH with `retain: true` indefinitely by default, with no concept
    * of "this state is too old to still hand to a new subscriber" - a
    * bridge/tool that died mid-session with a stale command retained
    * would keep replaying that exact command to every future subscriber
-   * forever. H051 already defends the CLIENT side of this (a bridge must
+   * forever. already defends the CLIENT side of this (a bridge must
    * never blindly trust a retained replay as a live command); this is
    * the complementary broker-side policy - a retained message older than
    * `retainedTtlMs` is actively cleared (a real empty-payload retained
@@ -190,7 +190,7 @@ export async function buildBroker(
   if (options.credentials) {
     const credentials = options.credentials;
     broker.authenticate = (client, username, password, callback) => {
-      // MQTT-01: client.id is already populated from the real CONNECT
+      // client.id is already populated from the real CONNECT
       // packet at this point (Aedes parses it before calling authenticate)
       // - binding it here is what stops a validly-authenticated, low-
       // privilege user from simply declaring a different, privileged

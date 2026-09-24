@@ -3,10 +3,10 @@
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 // GPL-3.0 - see LICENSE
 //
-// I41: real end-to-end proof that a retained message older than
+// real end-to-end proof that a retained message older than
 // retainedTtlMs is actively cleared - a NEW subscriber connecting after the
 // TTL elapses must never receive it, over a real broker/client (not just
-// internal Map bookkeeping). H051 (in the sibling bridge repos) already
+// internal Map bookkeeping). (in the sibling bridge repos) already
 // defends a CLIENT against blindly trusting a retained replay as a live
 // command; this is the complementary broker-side policy that retained
 // state itself now has a real expiry.

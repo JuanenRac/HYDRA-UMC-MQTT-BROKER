@@ -34,7 +34,7 @@ describe("MQTT credential configuration", () => {
     expect(credentialsAuthenticate(CREDENTIALS, "robot-1", undefined, "robot-1")).toBe(false);
   });
 
-  it("MQTT-01: rejects the right username/password with a client ID outside its own authorized prefix", () => {
+  it("rejects the right username/password with a client ID outside its own authorized prefix", () => {
     // The exact scenario from the finding: a valid, lower-privilege
     // credential trying to authenticate under a different (here,
     // higher-privileged-looking) client ID that its own username/password

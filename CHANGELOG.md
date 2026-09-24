@@ -69,9 +69,9 @@ only the 5 external machine bridges' `hydra/bridges/<name>/...` topics
 are real and wired today. Documents the real, current state of what's
 implemented vs. planned; no behavior changed.
 
-## [0.0.9] - MQTT-01: bind authenticated identity to a real client-ID prefix
+## [0.0.9] - bind authenticated identity to a real client-ID prefix
 
-- **MQTT-01 (P1):**
+- 
   `credentialsAuthenticate` verified username/password only - `src/acl.ts`'s
   own rules key entirely off client ID prefix, and a client ID is
   client-chosen, unrelated to which credential authenticated it. A real,

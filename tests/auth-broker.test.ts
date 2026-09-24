@@ -86,7 +86,7 @@ describe("real MQTT CONNECT authentication", () => {
     await expect(connectionIsRejected({})).resolves.toBeUndefined();
   });
 
-  it("MQTT-01: rejects a real client presenting valid credentials under a client ID outside its own authorized prefix", async () => {
+  it("rejects a real client presenting valid credentials under a client ID outside its own authorized prefix", async () => {
     // The exact combination the finding describes: a REAL, valid
     // credential (correct username/password) trying to CONNECT under a
     // client ID it was never authorized for.
@@ -96,7 +96,7 @@ describe("real MQTT CONNECT authentication", () => {
   });
 });
 
-describe("MQTT-01: authentication identity is bound through to real ACL enforcement", () => {
+describe("authentication identity is bound through to real ACL enforcement", () => {
   // A distinct port: this describe block's own beforeEach runs IN ADDITION
   // to (not instead of) the file-level beforeEach above, which would
   // otherwise try to bind the shared TEST_PORT a second time before the
