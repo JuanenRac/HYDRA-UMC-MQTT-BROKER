@@ -61,7 +61,9 @@ function connectClient(): Promise<MqttClient> {
 
 function scrapeMetrics(path = "/metrics"): Promise<{ status: number; contentType: string | undefined; body: string }> {
   return new Promise((resolve, reject) => {
-    get(`http://127.0.0.1:${METRICS_PORT}${path}`, (res) => {
+    // agent: false - never reuse a keep-alive socket left over from a previous
+    // test's (since closed) metrics server on this same port.
+    get(`http://127.0.0.1:${METRICS_PORT}${path}`, { agent: false }, (res) => {
       let body = "";
       res.on("data", (chunk) => (body += chunk));
       res.on("end", () => resolve({ status: res.statusCode ?? 0, contentType: res.headers["content-type"], body }));
