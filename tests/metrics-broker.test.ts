@@ -32,6 +32,15 @@ beforeEach(async () => {
   broker = built.broker;
   server = built.server;
   metricsServer = built.metricsServer;
+  // buildBroker() starts metricsServer.listen() without awaiting it, so a
+  // scrape fired right away could race the bind and get ECONNREFUSED -
+  // wait for it explicitly instead of hoping the bind wins.
+  if (metricsServer && !metricsServer.listening) {
+    await new Promise<void>((resolve, reject) => {
+      metricsServer!.once("listening", () => resolve());
+      metricsServer!.once("error", reject);
+    });
+  }
 });
 
 afterEach(async () => {
@@ -50,9 +59,9 @@ function connectClient(): Promise<MqttClient> {
   });
 }
 
-function scrapeMetrics(): Promise<{ status: number; contentType: string | undefined; body: string }> {
+function scrapeMetrics(path = "/metrics"): Promise<{ status: number; contentType: string | undefined; body: string }> {
   return new Promise((resolve, reject) => {
-    get(`http://127.0.0.1:${METRICS_PORT}/metrics`, (res) => {
+    get(`http://127.0.0.1:${METRICS_PORT}${path}`, (res) => {
       let body = "";
       res.on("data", (chunk) => (body += chunk));
       res.on("end", () => resolve({ status: res.statusCode ?? 0, contentType: res.headers["content-type"], body }));
@@ -85,8 +94,8 @@ describe("HYDRA-UMC-MQTT-BROKER metrics (real Prometheus scrape over real HTTP)"
   });
 
   it("returns 404 for any other path", async () => {
-    const res = await scrapeMetrics().catch(() => null);
-    expect(res).not.toBeNull();
+    const res = await scrapeMetrics("/not-metrics");
+    expect(res.status).toBe(404);
   });
 
   it("reflects a real connected client in the connected-clients gauge", async () => {
