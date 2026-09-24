@@ -15,7 +15,7 @@ export interface BrokerCredential {
   username: string;
   password: string;
   /**
-   * MQTT-01 (P1):
+   * (P1):
    * a client ID is client-chosen and unrelated to which username/password
    * it presented - src/acl.ts's own rules key entirely off client ID
    * prefix. Without this field, a low-privilege but VALID user could
@@ -74,7 +74,7 @@ export function parseCredentialsConfig(json: string): BrokerCredential[] {
  * lengths are rejected before comparison because timingSafeEqual requires
  * equal-sized buffers.
  *
- * MQTT-01: also requires `clientId` to start with the matched credential's
+ * also requires `clientId` to start with the matched credential's
  * own `clientIdPrefix` - a valid username/password for a DIFFERENT
  * identity's prefix must never authenticate a client claiming this one.
  * `clientId` is checked only after a real username/password match, so a
