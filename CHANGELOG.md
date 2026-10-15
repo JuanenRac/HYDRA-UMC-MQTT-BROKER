@@ -89,8 +89,7 @@ implemented vs. planned; no behavior changed.
   `npx vitest run` - 62/62 passing; `npx tsc --noEmit` clean.
 - **`buildBroker()` gained an opt-in `wsPort` option (`MQTT_WS_PORT` env var)**
   wiring a real second listener onto the SAME broker instance, alongside the
-  existing plain-TCP one - found while auditing the
-  code: this README's own "Websockets Support" feature was listed as
+  existing plain-TCP one - found on code review: this README's own "Websockets Support" feature was listed as
   "planned - not implemented" with no `ws`/websocket dependency in
   `package.json` at all. Authentication/ACL/payload-limit hooks apply to a
   WS-connected client exactly as they do to a TCP one, since Aedes itself
@@ -184,7 +183,7 @@ implemented vs. planned; no behavior changed.
   of only reporting static manifest metadata. No `health_path` (this is
   a raw MQTT/TCP protocol, not HTTP), so the probe is a bare connect.
 
-## [0.0.4] - Fixed after auditing the code
+## [0.0.4] - fixed after a code review
 
 - **`src/acl.ts`** - removed a dead source-comment reference. No functional
   change - the surrounding security limitation remains self-contained.
