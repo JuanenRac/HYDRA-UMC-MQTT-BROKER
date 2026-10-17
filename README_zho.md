@@ -4,7 +4,7 @@
 
 # 📡 HYDRA-UMC-MQTT-BROKER
 
-<p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | 🇨🇳 <b>简体中文</b> | <a href="README_jpn.md">🇯🇵 日本語</a></p>
+<p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | 🇨🇳 <b>简体中文</b> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
 ### 🚀 面向 IoT 和外部集成的轻量级遥测桥接
 
@@ -16,7 +16,7 @@
 
 ---
 
-**诚实核查 - 今天真正能运行的部分：** broker 传输层(`src/server.ts`)、主题 ACL(`src/acl.ts`)以及 CONNECT 认证(`src/auth.ts`)都是真实的并经过测试(6 个文件共 62 个测试通过：`tests/server.test.ts`、`tests/acl.test.ts`、`tests/acl-broker.test.ts`、`tests/auth.test.ts`、`tests/auth-broker.test.ts`、`tests/ws-broker.test.ts`），并且 `tsc --noEmit` 检查干净。这些并非针对模拟内部结构的孤立单元测试——`tests/server.test.ts` 通过一个真实的 TCP 套接字，用真实的 `mqtt` 客户端库连接到一个真实运行中的 Aedes broker，一个真实的缺陷正是这样被发现的(Aedes 1.x 的 `broker.listen()` 步骤被跳过，导致每一次 CONNECT 都静默挂起)。MQTT-over-WebSocket 监听器和负载大小限制也是同样的情况：真实、可选，并且经过 broker 级别的测试。真正尚未构建的部分：mDNS/Home Assistant 发现功能仅处于计划阶段——`server.ts` 目前只是一个纯 TCP 监听器，没有任何发现服务；下方图中的 `hydra/swarm/...` 主题结构是未来的预期形态，要等到 HYDRA-UMC-SERVER 自身的状态被桥接到 MQTT 之后才会出现，而这尚未发生；今天真正实现并接好线的，只有 5 个外部机器桥接的 `hydra/bridges/<name>/...` 主题。具体已交付的内容请见 `CHANGELOG.md`。
+**诚实核查 - 今天真正能运行的部分：** broker 传输层(`src/server.ts`)、主题 ACL(`src/acl.ts`)以及 CONNECT 认证(`src/auth.ts`)都是真实的并经过测试(9 个文件共 84 个测试通过：`tests/server.test.ts`、`tests/acl.test.ts`、`tests/acl-broker.test.ts`、`tests/auth.test.ts`、`tests/auth-broker.test.ts`、`tests/ws-broker.test.ts`），并且 `tsc --noEmit` 检查干净。这些并非针对模拟内部结构的孤立单元测试——`tests/server.test.ts` 通过一个真实的 TCP 套接字，用真实的 `mqtt` 客户端库连接到一个真实运行中的 Aedes broker，一个真实的缺陷正是这样被发现的(Aedes 1.x 的 `broker.listen()` 步骤被跳过，导致每一次 CONNECT 都静默挂起)。MQTT-over-WebSocket 监听器和负载大小限制也是同样的情况：真实、可选，并且经过 broker 级别的测试。真正尚未构建的部分：mDNS/Home Assistant 发现功能仅处于计划阶段——`server.ts` 目前只是一个纯 TCP 监听器，没有任何发现服务；下方图中的 `hydra/swarm/...` 主题结构是未来的预期形态，要等到 HYDRA-UMC-SERVER 自身的状态被桥接到 MQTT 之后才会出现，而这尚未发生；今天真正实现并接好线的，只有 5 个外部机器桥接的 `hydra/bridges/<name>/...` 主题。具体已交付的内容请见 `CHANGELOG.md`。
 
 ---
 
@@ -38,6 +38,7 @@ Assistant）能够订阅机器人遥测数据并发布指令。
 * 📏 **载荷大小限制：** 对 PUBLISH 载荷大小的真实、可选的上限，可通过 `MAX_PAYLOAD_BYTES` 配置。*(已实现)*
 * ⚡ **WebSocket 支持：** 面向浏览器端客户端的 MQTT over WebSocket——同一个 broker 实例上真实存在、可选启用的第二个监听器，与现有的纯 TCP 监听器并存(`wsPort` 选项 / `MQTT_WS_PORT` 环境变量，默认端口 8083)。*（已实现）*
 * ⏳ **保留消息过期：** 面向保留(retained)消息的真实、可选 TTL(`retainedTtlMs` 选项 / `MQTT_RETAINED_TTL_MS` 环境变量)——超过该期限的保留状态会被主动清除，而不是永远发送给此后的每一个订阅者。*（已实现）*
+* 🛡️ **生产策略：** 生产环境启动（Dockerfile 设置的 `NODE_ENV=production`）在以下情况会拒绝运行：没有 `MQTT_AUTH_JSON` 和 `MQTT_ACL_JSON`、密码少于 16 个字符或为示例值、没有覆盖每个凭据前缀的 ACL 规则；`MQTT_ALLOW_ANONYMOUS=1` 表示有意运行开放的实验室代理。ACL 按凭据所证明的身份（其自身的 `clientIdPrefix`）而不是客户端自选的客户端 ID 来评估；除非 `MQTT_RETAINED_TTL_MS` 另有设置，保留消息 24 小时后过期；`MQTT_BIND_HOST` / `MQTT_METRICS_HOST` 选择监听器绑定的网卡。*（已实现）*
 * 📊 **Prometheus 指标：** 真实、可选的 `GET /metrics` 监听器(`metricsPort` 选项 / `MQTT_METRICS_PORT` 环境变量，默认端口 9883)，以标准 Prometheus 文本格式报告已连接客户端数、收到的消息总数，以及总的进/出字节数。*（已实现）*
 
 ---

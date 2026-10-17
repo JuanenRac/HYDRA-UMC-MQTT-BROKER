@@ -4,7 +4,7 @@
 
 # 📡 HYDRA-UMC-MQTT-BROKER
 
-<p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | 🇯🇵 <b>日本語</b></p>
+<p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | 🇯🇵 <b>日本語</b> | <a href="README_por.md">🇵🇹 Português</a></p>
 
 ### 🚀 IoT および外部統合向けの軽量テレメトリブリッジ
 
@@ -16,7 +16,7 @@
 
 ---
 
-**正直な現状確認 - 今日実際に動くもの:** ブローカーのトランスポート層(`src/server.ts`)、トピック ACL(`src/acl.ts`)、そして CONNECT 認証(`src/auth.ts`)は本物であり、テスト済みである(6 ファイルにわたり 62 件のテストが成功: `tests/server.test.ts`、`tests/acl.test.ts`、`tests/acl-broker.test.ts`、`tests/auth.test.ts`、`tests/auth-broker.test.ts`、`tests/ws-broker.test.ts`)。`tsc --noEmit` もクリーンである。これらはモック化された内部実装に対する分離された単体テストではない——`tests/server.test.ts` は本物の TCP ソケットを介して本物の `mqtt` クライアントライブラリを、実際に稼働している本物の Aedes ブローカーに接続しており、まさにこの方法で実際のバグ(Aedes 1.x の `broker.listen()` ステップが省略され、すべての CONNECT が静かにハングしていた問題)が実際に発見された。MQTT over WebSocket リスナーとペイロードサイズ制限も同様である: 本物で、オプトインであり、ブローカーレベルでテストされている。実際にまだ構築されていないもの: mDNS/Home Assistant ディスカバリーは計画段階にすぎない——`server.ts` は現在、いかなるディスカバリーサービスも持たない単純な TCP リスナーである——そして下記の図にある `hydra/swarm/...` というトピック形状は、HYDRA-UMC-SERVER 自身の状態が MQTT にブリッジされた後に想定される将来の形であり、それはまだ実現していない。今日実際に本物として実装され配線されているのは、5 つの外部マシンブリッジの `hydra/bridges/<name>/...` トピックのみである。これまでに何が実際に出荷されたかは `CHANGELOG.md` を参照。
+**正直な現状確認 - 今日実際に動くもの:** ブローカーのトランスポート層(`src/server.ts`)、トピック ACL(`src/acl.ts`)、そして CONNECT 認証(`src/auth.ts`)は本物であり、テスト済みである(9 ファイルにわたり 84 件のテストが成功: `tests/server.test.ts`、`tests/acl.test.ts`、`tests/acl-broker.test.ts`、`tests/auth.test.ts`、`tests/auth-broker.test.ts`、`tests/ws-broker.test.ts`)。`tsc --noEmit` もクリーンである。これらはモック化された内部実装に対する分離された単体テストではない——`tests/server.test.ts` は本物の TCP ソケットを介して本物の `mqtt` クライアントライブラリを、実際に稼働している本物の Aedes ブローカーに接続しており、まさにこの方法で実際のバグ(Aedes 1.x の `broker.listen()` ステップが省略され、すべての CONNECT が静かにハングしていた問題)が実際に発見された。MQTT over WebSocket リスナーとペイロードサイズ制限も同様である: 本物で、オプトインであり、ブローカーレベルでテストされている。実際にまだ構築されていないもの: mDNS/Home Assistant ディスカバリーは計画段階にすぎない——`server.ts` は現在、いかなるディスカバリーサービスも持たない単純な TCP リスナーである——そして下記の図にある `hydra/swarm/...` というトピック形状は、HYDRA-UMC-SERVER 自身の状態が MQTT にブリッジされた後に想定される将来の形であり、それはまだ実現していない。今日実際に本物として実装され配線されているのは、5 つの外部マシンブリッジの `hydra/bridges/<name>/...` トピックのみである。これまでに何が実際に出荷されたかは `CHANGELOG.md` を参照。
 
 ---
 
@@ -39,6 +39,7 @@ MQTT 3.1.1 標準を実装しており(Aedes 経由、実機で検証済み - �
 * 📏 **ペイロードサイズ制限：** PUBLISH のペイロードサイズに対する実際のオプトイン方式の上限で、`MAX_PAYLOAD_BYTES` で設定可能です。*(実装済み)*
 * ⚡ **WebSocket サポート：** ブラウザベースのクライアント向けの MQTT over WebSocket——同じブローカーインスタンス上で、既存のプレーン TCP と並ぶ本物のオプトイン第2リスナー(`wsPort` オプション / `MQTT_WS_PORT` 環境変数、デフォルトポート 8083)。*（実装済み）*
 * ⏳ **retained メッセージの有効期限：** retained メッセージ向けの本物のオプトイン TTL(`retainedTtlMs` オプション / `MQTT_RETAINED_TTL_MS` 環境変数)——制限より古い retained 状態は、以後すべての購読者に永久に配信され続けるのではなく、実際に消去される。*（実装済み）*
+* 🛡️ **本番ポリシー：** 本番起動（Dockerfile が設定する `NODE_ENV=production`）では、`MQTT_AUTH_JSON` と `MQTT_ACL_JSON` がない場合、16 文字未満または例のパスワードの場合、すべての認証情報のプレフィックスを網羅する ACL ルールがない場合は起動を拒否します。`MQTT_ALLOW_ANONYMOUS=1` は、意図的にオープンなラボ用ブローカーであることを示します。ACL はクライアントが選んだクライアント ID ではなく、認証情報が証明した ID（その `clientIdPrefix`）で評価されます。`MQTT_RETAINED_TTL_MS` で別の指定がない限り、retained メッセージは 24 時間で期限切れになります。`MQTT_BIND_HOST` / `MQTT_METRICS_HOST` でリスナーがバインドするインターフェースを選べます。*（実装済み）*
 
 ---
 

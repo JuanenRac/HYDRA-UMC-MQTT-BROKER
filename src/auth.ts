@@ -87,10 +87,24 @@ export function credentialsAuthenticate(
   password: Buffer | undefined,
   clientId: string | undefined,
 ): boolean {
-  if (username === undefined || password === undefined) return false;
+  return authenticatedPrefix(credentials, username, password, clientId) !== null;
+}
+
+/**
+ * The identity prefix of the credential a CONNECT proved, or null when it did not authenticate. The ACL is evaluated against THIS (the verified principal's own prefix), not
+ * against the client ID the client chose: a credential whose prefix is `bridge-` can connect as `bridge-cnc-x`, but its rights are those of the rule that covers `bridge-`,
+ * never those of a more specific (and more privileged) `bridge-cnc-` rule that happens to come first.
+ */
+export function authenticatedPrefix(
+  credentials: readonly BrokerCredential[],
+  username: string | undefined,
+  password: Buffer | undefined,
+  clientId: string | undefined,
+): string | null {
+  if (username === undefined || password === undefined) return null;
   const configured = credentials.find((credential) => credential.username === username);
-  if (!configured) return false;
+  if (!configured) return null;
   const expected = Buffer.from(configured.password, "utf8");
-  if (expected.length !== password.length || !timingSafeEqual(expected, password)) return false;
-  return typeof clientId === "string" && clientId.startsWith(configured.clientIdPrefix);
+  if (expected.length !== password.length || !timingSafeEqual(expected, password)) return null;
+  return typeof clientId === "string" && clientId.startsWith(configured.clientIdPrefix) ? configured.clientIdPrefix : null;
 }

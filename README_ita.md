@@ -4,7 +4,7 @@
 
 # 📡 HYDRA-UMC-MQTT-BROKER
 
-<p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | 🇮🇹 <b>Italiano</b> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a></p>
+<p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | 🇮🇹 <b>Italiano</b> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
 ### 🚀 Bridge di telemetria leggero per IoT e integrazioni esterne
 
@@ -16,7 +16,7 @@
 
 ---
 
-**Controllo di onestà - cosa funziona davvero oggi:** il trasporto del broker (`src/server.ts`), l'ACL dei topic (`src/acl.ts`), e l'autenticazione CONNECT (`src/auth.ts`) sono reali e testati (62 test superati in 6 file: `tests/server.test.ts`, `tests/acl.test.ts`, `tests/acl-broker.test.ts`, `tests/auth.test.ts`, `tests/auth-broker.test.ts`, `tests/ws-broker.test.ts`), e `tsc --noEmit` è pulito. Non sono test unitari isolati contro interni simulati - `tests/server.test.ts` collega una vera libreria client `mqtt` tramite un vero socket TCP a un vero broker Aedes in esecuzione, ed è così che è stato trovato un vero bug (il passaggio `broker.listen()` di Aedes 1.x saltato, bloccando silenziosamente ogni CONNECT). Il listener MQTT-su-WebSocket e il limite di dimensione del payload funzionano allo stesso modo: reali, opzionali e testati contro il broker. Ciò che non è realmente costruito: la discovery mDNS/Home Assistant è solo pianificata - `server.ts` è un semplice listener TCP senza alcun servizio di discovery - e la forma di topic `hydra/swarm/...` nel diagramma sottostante è la forma futura prevista una volta che lo stato di HYDRA-UMC-SERVER sarà collegato a MQTT, cosa che non è ancora avvenuta; solo i topic `hydra/bridges/<name>/...` dei 5 bridge di macchine esterne sono reali e cablati oggi. Vedi `CHANGELOG.md` per ciò che è stato consegnato esattamente finora.
+**Controllo di onestà - cosa funziona davvero oggi:** il trasporto del broker (`src/server.ts`), l'ACL dei topic (`src/acl.ts`), e l'autenticazione CONNECT (`src/auth.ts`) sono reali e testati (84 test superati in 9 file: `tests/server.test.ts`, `tests/acl.test.ts`, `tests/acl-broker.test.ts`, `tests/auth.test.ts`, `tests/auth-broker.test.ts`, `tests/ws-broker.test.ts`), e `tsc --noEmit` è pulito. Non sono test unitari isolati contro interni simulati - `tests/server.test.ts` collega una vera libreria client `mqtt` tramite un vero socket TCP a un vero broker Aedes in esecuzione, ed è così che è stato trovato un vero bug (il passaggio `broker.listen()` di Aedes 1.x saltato, bloccando silenziosamente ogni CONNECT). Il listener MQTT-su-WebSocket e il limite di dimensione del payload funzionano allo stesso modo: reali, opzionali e testati contro il broker. Ciò che non è realmente costruito: la discovery mDNS/Home Assistant è solo pianificata - `server.ts` è un semplice listener TCP senza alcun servizio di discovery - e la forma di topic `hydra/swarm/...` nel diagramma sottostante è la forma futura prevista una volta che lo stato di HYDRA-UMC-SERVER sarà collegato a MQTT, cosa che non è ancora avvenuta; solo i topic `hydra/bridges/<name>/...` dei 5 bridge di macchine esterne sono reali e cablati oggi. Vedi `CHANGELOG.md` per ciò che è stato consegnato esattamente finora.
 
 ---
 
@@ -35,6 +35,7 @@ Implementa lo standard MQTT 3.1.1 (via Aedes, verificato dal vivo - vedi Archite
 * 📏 **Limite sulla dimensione del payload:** Un limite reale e opzionale sulla dimensione del payload di PUBLISH, configurabile tramite `MAX_PAYLOAD_BYTES`. *(implementato)*
 * ⚡ **Supporto Websocket:** MQTT-over-WebSockets per client basati su browser - lo stesso broker, un secondo listener reale e opzionale accanto al TCP semplice esistente (opzione `wsPort` / variabile d'ambiente `MQTT_WS_PORT`, porta predefinita 8083). *(implementato)*
 * ⏳ **Scadenza dei messaggi retained:** Un vero TTL opzionale per i messaggi retained (opzione `retainedTtlMs` / variabile d'ambiente `MQTT_RETAINED_TTL_MS`) - uno stato retained più vecchio del limite viene cancellato attivamente invece di essere consegnato per sempre a ogni futuro sottoscrittore. *(implementato)*
+* 🛡️ **Politica di produzione:** Un avvio in produzione (`NODE_ENV=production`, che il Dockerfile imposta) rifiuta di funzionare senza `MQTT_AUTH_JSON` e `MQTT_ACL_JSON`, con password sotto i 16 caratteri o di esempio, e senza una regola ACL che copra il prefisso di ogni credenziale; `MQTT_ALLOW_ANONYMOUS=1` dice di proposito che è un broker di laboratorio aperto. L'ACL è valutata rispetto all'identità provata dalla credenziale (il suo `clientIdPrefix`), non rispetto al client ID scelto dal client; i messaggi retained scadono dopo 24 ore salvo che `MQTT_RETAINED_TTL_MS` dica altro; `MQTT_BIND_HOST` / `MQTT_METRICS_HOST` scelgono l'interfaccia a cui si legano i listener. *(implementato)*
 
 ---
 

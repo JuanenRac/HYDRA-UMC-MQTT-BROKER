@@ -28,9 +28,10 @@ import { readPackageVersion } from "./version.js";
 import { type AclRule, isPublishAllowed, isSubscribeAllowed, parseAclConfig } from "./acl.js";
 import {
   type BrokerCredential,
-  credentialsAuthenticate,
+  authenticatedPrefix,
   parseCredentialsConfig,
 } from "./auth.js";
+import { DEFAULT_PRODUCTION_RETAINED_TTL_MS, isProduction, openStartWarnings, productionProblems } from "./security.js";
 import { MetricsRegistry } from "./metrics.js";
 
 // 1883 is the IANA-registered plain-MQTT port (8883 is the TLS variant) -
@@ -95,6 +96,10 @@ export interface BuildBrokerOptions {
    * at all, unchanged from before this option existed - `true` uses
    * `DEFAULT_METRICS_PORT`, a number picks the port explicitly. */
   metricsPort?: number | true;
+  /** The address the MQTT (TCP and WebSocket) listeners bind to. Omitted means every interface (0.0.0.0), as before; a deployment that only talks to local services sets 127.0.0.1. */
+  host?: string;
+  /** The address of the metrics listener. Omitted means the same as `host`. */
+  metricsHost?: string;
 }
 
 // Adapts one `ws` connection into the real Duplex stream `broker.handle()`
@@ -178,6 +183,11 @@ export async function buildBroker(
   // do) even with no HTTP listener running.
   const metrics = new MetricsRegistry();
   const broker = new Aedes({ id: "hydra-umc-mqtt-broker" });
+  const host = options.host ?? "0.0.0.0";
+  const metricsHost = options.metricsHost ?? host;
+  // The verified principal of each authenticated client (the prefix of the credential it proved). The ACL is evaluated against it, not against the client ID the client chose.
+  const principals = new WeakMap<object, string>();
+  const aclIdentity = (client: Client | null | undefined): string => (client ? principals.get(client) ?? client.id ?? "" : "");
   // Aedes 1.x moved persistence/mqemitter setup into an explicit async
   // listen() step (a real, undocumented-in-the-original-scaffold change
   // from the 0.x factory-function API) - skipping it left the broker's
@@ -195,7 +205,9 @@ export async function buildBroker(
       // - binding it here is what stops a validly-authenticated, low-
       // privilege user from simply declaring a different, privileged
       // client ID to pass src/acl.ts's own prefix-based rules.
-      if (credentialsAuthenticate(credentials, username, password, client?.id)) {
+      const principal = authenticatedPrefix(credentials, username, password, client?.id);
+      if (principal !== null) {
+        if (client) principals.set(client, principal);
         callback(null, true);
         return;
       }
@@ -222,7 +234,7 @@ export async function buildBroker(
         }
       }
       if (options.acl) {
-        const clientId = client?.id ?? "";
+        const clientId = aclIdentity(client);
         if (!isPublishAllowed(options.acl, clientId, packet.topic)) {
           callback(new Error(`ACL: publish to '${packet.topic}' denied for client '${clientId || "(unknown)"}'`));
           return;
@@ -235,7 +247,7 @@ export async function buildBroker(
   if (options.acl) {
     const rules = options.acl;
     broker.authorizeSubscribe = (client, subscription, callback) => {
-      if (isSubscribeAllowed(rules, client.id, subscription.topic ?? "")) {
+      if (isSubscribeAllowed(rules, aclIdentity(client), subscription.topic ?? "")) {
         callback(null, subscription);
         return;
       }
@@ -326,7 +338,7 @@ export async function buildBroker(
     broker.on("closed", () => clearInterval(sweep));
   }
 
-  server.listen(port, "0.0.0.0");
+  server.listen(port, host);
 
   let wsServer: HttpServer | undefined;
   if (wsPort !== undefined) {
@@ -353,7 +365,7 @@ export async function buildBroker(
       stream.on("error", () => undefined);
       broker.handle(stream);
     });
-    wsServer.listen(wsPort, "0.0.0.0");
+    wsServer.listen(wsPort, host);
   }
 
   let metricsServer: HttpServer | undefined;
@@ -375,7 +387,7 @@ export async function buildBroker(
       res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
       res.end("not found\n");
     });
-    metricsServer.listen(metricsPort, "0.0.0.0");
+    metricsServer.listen(metricsPort, metricsHost);
   }
 
   return { broker, server, wsServer, metricsServer, metrics };
@@ -433,6 +445,9 @@ function loadBrokerOptionsFromEnv(): BuildBrokerOptions {
     options.metricsPort = metricsPort;
   }
 
+  if (process.env.MQTT_BIND_HOST) options.host = process.env.MQTT_BIND_HOST.trim();
+  if (process.env.MQTT_METRICS_HOST) options.metricsHost = process.env.MQTT_METRICS_HOST.trim();
+
   if (process.env.MQTT_RETAINED_TTL_MS) {
     const retainedTtlMs = Number(process.env.MQTT_RETAINED_TTL_MS);
     if (!Number.isSafeInteger(retainedTtlMs) || retainedTtlMs <= 0) {
@@ -440,7 +455,18 @@ function loadBrokerOptionsFromEnv(): BuildBrokerOptions {
       process.exit(1);
     }
     options.retainedTtlMs = retainedTtlMs;
+  } else if (isProduction(process.env)) {
+    // A retained command must not be replayed to every future subscriber for ever.
+    options.retainedTtlMs = DEFAULT_PRODUCTION_RETAINED_TTL_MS;
   }
+
+  const problems = productionProblems(options, process.env);
+  if (problems.length > 0) {
+    for (const problem of problems) console.error(`[HYDRA-UMC-MQTT-BROKER] refusing to start in production: ${problem}`);
+    console.error("[HYDRA-UMC-MQTT-BROKER] set MQTT_AUTH_JSON and MQTT_ACL_JSON (see docs), or MQTT_ALLOW_ANONYMOUS=1 for an open lab broker.");
+    process.exit(1);
+  }
+  for (const warning of openStartWarnings(options)) console.warn(`[HYDRA-UMC-MQTT-BROKER] WARNING: ${warning}`);
 
   return options;
 }

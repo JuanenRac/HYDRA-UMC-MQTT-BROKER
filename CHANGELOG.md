@@ -24,6 +24,15 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.1.3] - Production policy, verified identity for the ACL, retained TTL and bind host
+
+- A production start (`NODE_ENV=production`, which the Dockerfile sets) now refuses to run without `MQTT_AUTH_JSON` and `MQTT_ACL_JSON`, with passwords of fewer than 16 characters or example values, with an ACL rule that covers the prefix of every credential, or with a rule that matches every client; `MQTT_ALLOW_ANONYMOUS=1` states on purpose that it is an open lab broker. An open start prints what it leaves unprotected.
+- The ACL is evaluated against the identity the credential proved (its own `clientIdPrefix`), not against the client ID the client chose: a `bridge-` credential that connects as `bridge-cnc-1` gets the rights of the rule that covers `bridge-`, never those of a more specific `bridge-cnc-` rule that comes first.
+- A production broker expires retained messages after 24 hours unless `MQTT_RETAINED_TTL_MS` says otherwise, so a stale retained command is not replayed for ever.
+- New `MQTT_BIND_HOST` and `MQTT_METRICS_HOST` choose the interface the listeners bind to (default: every interface, as before).
+- `tests/security.test.ts` covers the production policy, the verified principal and, over a real TCP connection, the case of the credential that connects with a more specific client ID.
+- Documented in the `.env.example` and in the 7 READMEs, plus a Portuguese README.
+
 ## [0.1.2]
 
 - **Prometheus-format metrics exporter (`metricsPort`, `MQTT_METRICS_PORT`).**
