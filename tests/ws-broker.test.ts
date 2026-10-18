@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC MQTT BROKER - tests/ws-broker.test.ts
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see LICENSE
+// GPL-3.0-or-later - see LICENSE
 //
 // Real protocol-level tests for the opt-in MQTT-over-WebSocket listener
 // (previously untested) - starts a real Aedes broker with `wsPort` set and connects a

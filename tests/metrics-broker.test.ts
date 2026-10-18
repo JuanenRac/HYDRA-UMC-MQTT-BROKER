@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC MQTT BROKER - tests/metrics-broker.test.ts
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see LICENSE
+// GPL-3.0-or-later - see LICENSE
 //
 // Real end-to-end coverage: starts a real broker with `metricsPort` set,
 // connects real MQTT clients over real TCP, publishes real messages, then

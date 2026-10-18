@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC MQTT BROKER - MQTT 3.1.1 Broker over plain TCP: src/server.ts
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see LICENSE
+// GPL-3.0-or-later - see LICENSE
 //
 // Lightweight, asynchronous pub/sub bridge between the HYDRA-UMC ecosystem
 // and external IoT devices, dashboards and home-automation systems (see

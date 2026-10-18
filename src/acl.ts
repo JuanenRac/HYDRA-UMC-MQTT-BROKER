@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC MQTT BROKER - src/acl.ts
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see LICENSE
+// GPL-3.0-or-later - see LICENSE
 //
 // Real, verifiable topic ACL - turns "clients can only publish/subscribe to
 // their own topics" from a README promise into checkable config, matching

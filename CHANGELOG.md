@@ -24,6 +24,11 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.1.5]
+
+- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
+- The licence is written as GPL-3.0-or-later in every header and in the package metadata.
+
 ## [0.1.4] - TLS, orderly shutdown, WebSocket cleanup and retained expiry without a live delivery
 
 - Retained messages that reach `MQTT_RETAINED_TTL_MS` are now removed straight from the store. Before, the expiry published an empty message that live subscribers received as a fresh (empty) command.

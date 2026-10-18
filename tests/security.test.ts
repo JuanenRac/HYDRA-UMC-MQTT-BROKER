@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC MQTT BROKER - tests/security.test.ts
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see LICENSE
+// GPL-3.0-or-later - see LICENSE
 //
 // What a production start refuses, and the identity the ACL is evaluated against: a real client over a real TCP socket authenticates with a credential whose prefix is "bridge-" and
 // connects as "bridge-cnc-1"; it must get the rights of the rule that covers "bridge-", not those of the more specific, more privileged "bridge-cnc-" rule that comes first.

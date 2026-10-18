@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC MQTT BROKER - tests/acl-broker.test.ts
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see LICENSE
+// GPL-3.0-or-later - see LICENSE
 //
 // Real, protocol-level negative tests - a real "mqtt" client over a real
 // TCP socket attempting a disallowed PUBLISH, a scope-broadening SUBSCRIBE,

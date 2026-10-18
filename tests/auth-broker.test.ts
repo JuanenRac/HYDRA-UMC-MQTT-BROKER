@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC-MQTT-BROKER - Real MQTT CONNECT authentication tests
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see LICENSE
+// GPL-3.0-or-later - see LICENSE
 // =============================================================================
 // These tests use real MQTT clients and a real Aedes TCP listener.  They prove
 // that a client cannot merely choose an ACL-looking client ID: it must also

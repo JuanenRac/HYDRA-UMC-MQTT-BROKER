@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC-MQTT-BROKER - Optional MQTT username/password authentication
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see LICENSE
+// GPL-3.0-or-later - see LICENSE
 // =============================================================================
 // Authentication is deliberately opt-in: existing local development brokers
 // stay open unless credentials are supplied.  When it is enabled, this module

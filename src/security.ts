@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC-MQTT-BROKER - What a production start requires: src/security.ts
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see LICENSE
+// GPL-3.0-or-later - see LICENSE
 // =============================================================================
 // Authentication and the topic ACL are opt-in so a local development broker stays easy to start, but an opt-in protection that a deployment forgets to switch on leaves the
 // broker open to everybody on the network (anyone could publish jobs to the bridges). A production start (NODE_ENV=production, which the Dockerfile sets) therefore refuses to
