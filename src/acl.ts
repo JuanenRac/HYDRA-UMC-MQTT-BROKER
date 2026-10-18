@@ -105,6 +105,22 @@ export function isSubscribeAllowed(rules: AclRule[], clientId: string, requested
 
 export class AclConfigError extends Error {}
 
+/**
+ * Whether `filter` is a well-formed MQTT topic filter: not empty, `#` only as
+ * the whole last level and `+` only as a whole level. A malformed filter such
+ * as `a/#/b` or `a+` would be read differently by the publish and subscribe
+ * checks, so config containing one is refused instead of being half-enforced.
+ */
+export function isValidTopicFilter(filter: string): boolean {
+  if (filter.length === 0 || filter.includes("\u0000")) return false;
+  const levels = filter.split("/");
+  return levels.every((level, index) => {
+    if (level === "#") return index === levels.length - 1;
+    if (level === "+") return true;
+    return !level.includes("#") && !level.includes("+");
+  });
+}
+
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
@@ -138,6 +154,12 @@ export function parseAclConfig(json: string): AclRule[] {
         `ACL rule at index ${index} is malformed - expected {clientIdPrefix: string, publish: string[], subscribe: string[]}`,
       );
     }
-    return rule as unknown as AclRule;
+    const checked = rule as unknown as AclRule;
+    for (const filter of [...checked.publish, ...checked.subscribe]) {
+      if (!isValidTopicFilter(filter)) {
+        throw new AclConfigError(`ACL rule at index ${index} has an invalid topic filter: ${JSON.stringify(filter)}`);
+      }
+    }
+    return checked;
   });
 }

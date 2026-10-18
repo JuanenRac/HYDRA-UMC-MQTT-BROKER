@@ -2,14 +2,15 @@
   "schema_version": "1.0",
   "ecosystem": "HYDRA-UMC",
   "name": "HYDRA-UMC-MQTT-BROKER",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "role": "service",
   "stack": "node",
   "technologies": [
     "Node.js",
     "TypeScript",
     "Aedes MQTT broker (MQTT 3.1.1)",
-    "MQTT over WebSockets (ws)"
+    "MQTT over WebSockets (ws)",
+    "TLS and mutual TLS (optional)"
   ],
   "deployment_target": "cm5",
   "maturity": "established",

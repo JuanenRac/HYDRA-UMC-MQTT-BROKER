@@ -21,6 +21,9 @@
 
 import { createServer, type Server } from "node:net";
 import { createServer as createHttpServer, type Server as HttpServer } from "node:http";
+import { createServer as createHttpsServer } from "node:https";
+import { createServer as createTlsServer, type Server as TlsServer } from "node:tls";
+import { readFileSync } from "node:fs";
 import { Duplex } from "node:stream";
 import { Aedes, type Client, type AedesPublishPacket } from "aedes";
 import { WebSocketServer, type WebSocket } from "ws";
@@ -45,6 +48,9 @@ const DEFAULT_PORT = Number(process.env.PORT) || 1883;
 // client pointed at this broker with zero configuration lands on the same
 // port a real operator would already expect.
 const DEFAULT_WS_PORT = 8083;
+
+// 8883 is the IANA-registered port of MQTT over TLS.
+const DEFAULT_TLS_PORT = 8883;
 
 // A dedicated metrics port (distinct from both MQTT listeners above) so a
 // Prometheus scrape target never shares a port with real MQTT traffic -
@@ -96,6 +102,14 @@ export interface BuildBrokerOptions {
    * at all, unchanged from before this option existed - `true` uses
    * `DEFAULT_METRICS_PORT`, a number picks the port explicitly. */
   metricsPort?: number | true;
+  /** Opt-in TLS for the MQTT listener (`tlsPort`, default 8883) and, when `wssPort` is set, for MQTT over WebSocket. PEM contents; `ca` plus `requireClientCert` turn it into mutual TLS. The plain listeners stay as they are: bind them to 127.0.0.1 or do not publish their ports when TLS is the only door. */
+  tls?: { cert: string | Buffer; key: string | Buffer; ca?: string | Buffer; requireClientCert?: boolean };
+  /** TLS MQTT port. Only used when `tls` is set. Omitted means 8883. */
+  tlsPort?: number;
+  /** MQTT-over-WebSocket-over-TLS port. Only used when `tls` is set; omitted starts no WSS listener. */
+  wssPort?: number;
+  /** Browser origins allowed to open an MQTT-over-WebSocket connection. Omitted allows any origin; clients that send no Origin header (not browsers) are always allowed. */
+  wsAllowedOrigins?: string[];
   /** The address the MQTT (TCP and WebSocket) listeners bind to. Omitted means every interface (0.0.0.0), as before; a deployment that only talks to local services sets 127.0.0.1. */
   host?: string;
   /** The address of the metrics listener. Omitted means the same as `host`. */
@@ -126,32 +140,68 @@ function wsToDuplex(socket: WebSocket): Duplex {
     write(chunk, _encoding, callback) {
       socket.send(chunk, callback);
     },
+    // Aedes closes a client it rejects (protocol error, failed login, ACL,
+    // keep-alive) by destroying this stream; the WebSocket underneath has to
+    // go with it or it stays open as a zombie connection.
+    final(callback) {
+      socket.close();
+      callback();
+    },
+    destroy(error, callback) {
+      pending = [];
+      if (socket.readyState !== socket.CLOSED) socket.terminate();
+      callback(error);
+    },
   });
 
   let pending: Buffer[] = [];
   let flushScheduled = false;
+  let ended = false;
+  const flush = () => {
+    flushScheduled = false;
+    if (ended || duplex.destroyed || pending.length === 0) return;
+    const batch = pending;
+    pending = [];
+    duplex.push(Buffer.concat(batch));
+  };
   socket.on("message", (data: Buffer | ArrayBuffer | Buffer[]) => {
     pending.push(Buffer.isBuffer(data) ? data : Buffer.from(data as ArrayBuffer));
     if (!flushScheduled) {
       flushScheduled = true;
-      setImmediate(() => {
-        flushScheduled = false;
-        const batch = pending;
-        pending = [];
-        duplex.push(Buffer.concat(batch));
-      });
+      setImmediate(flush);
     }
   });
-  socket.on("close", () => duplex.push(null));
+  socket.on("close", () => {
+    // Hand over what is still buffered (it may hold a DISCONNECT, which
+    // decides whether the will message is sent) before signalling the end.
+    flush();
+    ended = true;
+    duplex.push(null);
+  });
   socket.on("error", (err) => duplex.destroy(err));
 
   return duplex;
 }
 
+/** Whether `origin` may open an MQTT-over-WebSocket connection. */
+function originAllowed(origin: string | undefined, allowed: string[] | undefined): boolean {
+  if (!allowed || allowed.length === 0) return true;
+  if (!origin) return true; // not a browser
+  return allowed.includes(origin);
+}
+
 export async function buildBroker(
   port: number = DEFAULT_PORT,
   options: BuildBrokerOptions = {},
-): Promise<{ broker: Aedes; server: Server; wsServer?: HttpServer; metricsServer?: HttpServer; metrics: MetricsRegistry }> {
+): Promise<{
+  broker: Aedes;
+  server: Server;
+  wsServer?: HttpServer;
+  metricsServer?: HttpServer;
+  tlsServer?: TlsServer;
+  wssServer?: HttpServer;
+  metrics: MetricsRegistry;
+}> {
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
     throw new RangeError("port must be an integer from 0 to 65535");
   }
@@ -182,7 +232,9 @@ export async function buildBroker(
   // set - a caller can read `metrics.snapshot()` directly (as tests below
   // do) even with no HTTP listener running.
   const metrics = new MetricsRegistry();
-  const broker = new Aedes({ id: "hydra-umc-mqtt-broker" });
+  // maxClientsIdLength: MQTT 3.1 caps a client ID at 23 characters and Aedes enforces
+  // that for protocol level 3, which would refuse the bridges' longer IDs.
+  const broker = new Aedes({ id: "hydra-umc-mqtt-broker", maxClientsIdLength: 128 });
   const host = options.host ?? "0.0.0.0";
   const metricsHost = options.metricsHost ?? host;
   // The verified principal of each authenticated client (the prefix of the credential it proved). The ACL is evaluated against it, not against the client ID the client chose.
@@ -236,6 +288,7 @@ export async function buildBroker(
       if (options.acl) {
         const clientId = aclIdentity(client);
         if (!isPublishAllowed(options.acl, clientId, packet.topic)) {
+          metrics.aclDenied();
           callback(new Error(`ACL: publish to '${packet.topic}' denied for client '${clientId || "(unknown)"}'`));
           return;
         }
@@ -251,6 +304,7 @@ export async function buildBroker(
         callback(null, subscription);
         return;
       }
+      metrics.aclDenied();
       // Silently deny (grant nothing for this filter) rather than erroring
       // the whole SUBSCRIBE - matches how a real multi-topic SUBSCRIBE can
       // partially succeed, one topic filter at a time.
@@ -318,16 +372,16 @@ export async function buildBroker(
       for (const [topic, setAt] of retainedSetAt) {
         if (now - setAt < ttl) continue;
         retainedSetAt.delete(topic);
-        broker.publish(
-          { cmd: "publish", topic, payload: Buffer.alloc(0), qos: 0, retain: true, dup: false },
-          (err) => {
-            if (err) {
-              console.error(`[HYDRA-UMC-MQTT-BROKER] failed to expire retained message on '${topic}': ${err.message}`);
-            } else {
-              console.log(`[HYDRA-UMC-MQTT-BROKER] expired retained message on '${topic}' (older than ${ttl}ms)`);
-            }
-          },
-        );
+        // Dropped straight from the persistence layer. Publishing an empty
+        // retained message instead would also be delivered to live
+        // subscribers, and a bridge would read that empty message as a fresh
+        // command.
+        (broker as unknown as { persistence: { storeRetained(packet: unknown): Promise<void> } }).persistence
+          .storeRetained({ cmd: "publish", topic, payload: Buffer.alloc(0), qos: 0, retain: true, dup: false })
+          .then(
+            () => console.log(`[HYDRA-UMC-MQTT-BROKER] expired retained message on '${topic}' (older than ${ttl}ms)`),
+            (err: Error) => console.error(`[HYDRA-UMC-MQTT-BROKER] failed to expire retained message on '${topic}': ${err.message}`),
+          );
       }
       // A sweep interval longer than the TTL itself would let a message
       // outlive its own limit by up to (interval - ttl) before this ever
@@ -336,6 +390,27 @@ export async function buildBroker(
     }, Math.min(ttl, 30_000));
     sweep.unref();
     broker.on("closed", () => clearInterval(sweep));
+  }
+
+  // One WebSocket front for the plain and the TLS HTTP listeners.
+  function attachWebSocket(httpServer: HttpServer): void {
+    const wsSocketServer = new WebSocketServer({
+      server: httpServer,
+      // A frame bigger than the payload cap can never be a valid packet; without a
+      // cap `ws` accepts 100 MiB frames.
+      ...(options.maxPayloadBytes !== undefined ? { maxPayload: options.maxPayloadBytes + 65536 } : {}),
+      verifyClient: (info: { origin: string }) => originAllowed(info.origin || undefined, options.wsAllowedOrigins),
+    });
+    wsSocketServer.on("connection", (socket) => {
+      const stream = wsToDuplex(socket);
+      // A WS transport error (client vanished mid-frame, a malformed
+      // frame) would otherwise crash the process as an unhandled 'error'
+      // on the wrapped Duplex - the broker.on("client"/"clientDisconnect")
+      // logging above already covers a WS client exactly like a TCP one,
+      // since those are real Aedes-level events, not transport-level.
+      stream.on("error", () => undefined);
+      broker.handle(stream);
+    });
   }
 
   server.listen(port, host);
@@ -354,18 +429,29 @@ export async function buildBroker(
     // socket underneath a WS upgrade is still a real `net.Socket` with its
     // own `bytesRead`/`bytesWritten`.
     wsServer.on("connection", (socket) => metrics.trackSocket(socket));
-    const wsSocketServer = new WebSocketServer({ server: wsServer });
-    wsSocketServer.on("connection", (socket) => {
-      const stream = wsToDuplex(socket);
-      // A WS transport error (client vanished mid-frame, a malformed
-      // frame) would otherwise crash the process as an unhandled 'error'
-      // on the wrapped Duplex - the broker.on("client"/"clientDisconnect")
-      // logging above already covers a WS client exactly like a TCP one,
-      // since those are real Aedes-level events, not transport-level.
-      stream.on("error", () => undefined);
-      broker.handle(stream);
-    });
+    attachWebSocket(wsServer);
     wsServer.listen(wsPort, host);
+  }
+
+  let tlsServer: TlsServer | undefined;
+  let wssServer: HttpServer | undefined;
+  if (options.tls) {
+    const tlsOptions = {
+      cert: options.tls.cert,
+      key: options.tls.key,
+      ca: options.tls.ca,
+      requestCert: options.tls.requireClientCert === true,
+      rejectUnauthorized: options.tls.requireClientCert === true,
+    };
+    tlsServer = createTlsServer(tlsOptions, broker.handle);
+    tlsServer.on("secureConnection", (socket) => metrics.trackSocket(socket));
+    tlsServer.listen(options.tlsPort ?? DEFAULT_TLS_PORT, host);
+    if (options.wssPort !== undefined) {
+      wssServer = createHttpsServer(tlsOptions);
+      wssServer.on("secureConnection", (socket) => metrics.trackSocket(socket));
+      attachWebSocket(wssServer);
+      wssServer.listen(options.wssPort, host);
+    }
   }
 
   let metricsServer: HttpServer | undefined;
@@ -390,7 +476,39 @@ export async function buildBroker(
     metricsServer.listen(metricsPort, metricsHost);
   }
 
-  return { broker, server, wsServer, metricsServer, metrics };
+  return { broker, server, wsServer, metricsServer, tlsServer, wssServer, metrics };
+}
+
+/**
+ * Orderly stop: Aedes closes its clients first (a server.close() on its own
+ * waits for those connections to end, which never happens while clients stay
+ * connected), then every listener closes. A safety timer ends the wait if
+ * something still holds on.
+ */
+export async function closeBroker(
+  built: { broker: Aedes; server: Server; wsServer?: HttpServer; metricsServer?: HttpServer; tlsServer?: TlsServer; wssServer?: HttpServer },
+  timeoutMs = 5000,
+): Promise<void> {
+  const closeListener = (listener: { close(callback: () => void): unknown } | undefined) =>
+    new Promise<void>((resolve) => {
+      if (!listener) return resolve();
+      try {
+        listener.close(() => resolve());
+      } catch {
+        resolve(); // already closed
+      }
+    });
+  const closing = (async () => {
+    await new Promise<void>((resolve) => built.broker.close(() => resolve()));
+    await Promise.all([
+      closeListener(built.server),
+      closeListener(built.wsServer),
+      closeListener(built.metricsServer),
+      closeListener(built.tlsServer),
+      closeListener(built.wssServer),
+    ]);
+  })();
+  await Promise.race([closing, new Promise<void>((resolve) => setTimeout(resolve, timeoutMs).unref())]);
 }
 
 // Real, opt-in production config for the authentication/ACL/payload-limit options above -
@@ -445,6 +563,42 @@ function loadBrokerOptionsFromEnv(): BuildBrokerOptions {
     options.metricsPort = metricsPort;
   }
 
+  if (process.env.MQTT_TLS_CERT || process.env.MQTT_TLS_KEY) {
+    if (!process.env.MQTT_TLS_CERT || !process.env.MQTT_TLS_KEY) {
+      console.error("[HYDRA-UMC-MQTT-BROKER] MQTT_TLS_CERT and MQTT_TLS_KEY must be set together");
+      process.exit(1);
+    }
+    try {
+      options.tls = {
+        cert: readFileSync(process.env.MQTT_TLS_CERT),
+        key: readFileSync(process.env.MQTT_TLS_KEY),
+        ...(process.env.MQTT_TLS_CA ? { ca: readFileSync(process.env.MQTT_TLS_CA) } : {}),
+        requireClientCert: process.env.MQTT_TLS_REQUIRE_CLIENT_CERT === "1",
+      };
+    } catch (err) {
+      console.error(`[HYDRA-UMC-MQTT-BROKER] cannot read the TLS files: ${(err as Error).message}`);
+      process.exit(1);
+    }
+    if (options.tls.requireClientCert && !options.tls.ca) {
+      console.error("[HYDRA-UMC-MQTT-BROKER] MQTT_TLS_REQUIRE_CLIENT_CERT=1 needs MQTT_TLS_CA");
+      process.exit(1);
+    }
+    for (const [name, key] of [["MQTT_TLS_PORT", "tlsPort"], ["MQTT_WSS_PORT", "wssPort"]] as const) {
+      const raw = process.env[name];
+      if (!raw) continue;
+      const value = Number(raw);
+      if (!Number.isInteger(value) || value < 0 || value > 65535) {
+        console.error(`[HYDRA-UMC-MQTT-BROKER] ${name} must be an integer from 0 to 65535, got: ${raw}`);
+        process.exit(1);
+      }
+      options[key] = value;
+    }
+  }
+
+  if (process.env.MQTT_WS_ALLOWED_ORIGINS) {
+    options.wsAllowedOrigins = process.env.MQTT_WS_ALLOWED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean);
+  }
+
   if (process.env.MQTT_BIND_HOST) options.host = process.env.MQTT_BIND_HOST.trim();
   if (process.env.MQTT_METRICS_HOST) options.metricsHost = process.env.MQTT_METRICS_HOST.trim();
 
@@ -473,7 +627,8 @@ function loadBrokerOptionsFromEnv(): BuildBrokerOptions {
 
 async function main() {
   const options = loadBrokerOptionsFromEnv();
-  const { broker, server, wsServer, metricsServer } = await buildBroker(DEFAULT_PORT, options);
+  const built = await buildBroker(DEFAULT_PORT, options);
+  const { server, wsServer, metricsServer, tlsServer, wssServer } = built;
 
   server.on("error", (err) => {
     console.error("[HYDRA-UMC-MQTT-BROKER] fatal transport error:", err);
@@ -516,11 +671,7 @@ async function main() {
   // graceful-shutdown shape used by HYDRA-UMC-SERVER's own src/server.ts.
   function shutdown() {
     console.log("[HYDRA-UMC-MQTT-BROKER] shutting down...");
-    server.close(() => {
-      const closeWsThen = (next: () => void) => (wsServer ? wsServer.close(() => next()) : next());
-      const closeMetricsThen = (next: () => void) => (metricsServer ? metricsServer.close(() => next()) : next());
-      closeWsThen(() => closeMetricsThen(() => broker.close(() => process.exit(0))));
-    });
+    void closeBroker(built).then(() => process.exit(0));
   }
 
   process.on("SIGINT", shutdown);

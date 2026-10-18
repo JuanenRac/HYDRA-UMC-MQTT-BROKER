@@ -23,12 +23,15 @@ the broker compares a matching password using Node's constant-time comparison.
 Each credential also declares its own `clientIdPrefix`, and CONNECT is
 rejected unless the client's declared ID actually starts with it - a valid,
 lower-privilege credential cannot simply choose a different, more privileged
-client ID and inherit `MQTT_ACL_JSON`'s permissions for it (found and fixed
-while auditing the code). Pair the two: ACL rules
+client ID and inherit `MQTT_ACL_JSON`'s permissions for it. Pair the two: ACL rules
 restrict topics, authentication requires a real credential, and the
 credential's own prefix ties that identity to the ACL rule it is actually
-allowed to use. The transport is
-plain MQTT/TCP today, so deployment on an untrusted network requires a trusted
-private network or a TLS-terminating gateway. Never commit production secrets.
+allowed to use. The plain MQTT/TCP
+listener sends credentials in clear text. On an untrusted network turn on the
+built-in TLS (`MQTT_TLS_CERT` and `MQTT_TLS_KEY`, optionally mutual TLS with
+`MQTT_TLS_CA`) and bind the plain listeners to `127.0.0.1` with
+`MQTT_BIND_HOST` or do not publish their ports. Browser access over
+WebSocket can be limited to known origins with `MQTT_WS_ALLOWED_ORIGINS`. Never
+commit production secrets.
 
 We follow a coordinated disclosure policy to ensure hardware safety before public release.

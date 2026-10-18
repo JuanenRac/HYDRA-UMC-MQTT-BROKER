@@ -13,6 +13,7 @@ import {
   type AclRule,
   AclConfigError,
   isPublishAllowed,
+  isValidTopicFilter,
   isSubscribeAllowed,
   isSubscriptionWithinScope,
   parseAclConfig,
@@ -148,5 +149,25 @@ describe("parseAclConfig (real production config, e.g. MQTT_ACL_JSON)", () => {
 
   it("throws AclConfigError when publish/subscribe contain non-string entries", () => {
     expect(() => parseAclConfig(JSON.stringify([{ clientIdPrefix: "robot-", publish: [123], subscribe: [] }]))).toThrow(AclConfigError);
+  });
+});
+
+describe("topic filter validation", () => {
+  it("accepts well-formed filters", () => {
+    for (const filter of ["a/b", "a/+/b", "a/#", "#", "+", "hydra/bridges/cnc/cmd/#"]) {
+      expect(isValidTopicFilter(filter), filter).toBe(true);
+    }
+  });
+
+  it("rejects a # in the middle, wildcards inside a level and empty filters", () => {
+    for (const filter of ["a/#/b", "a/b#", "a+/b", "a/+b", "", "#/a"]) {
+      expect(isValidTopicFilter(filter), filter).toBe(false);
+    }
+  });
+
+  it("makes parseAclConfig refuse a rule with a malformed filter", () => {
+    const rule = (publish: string[]) => JSON.stringify([{ clientIdPrefix: "x", publish, subscribe: [] }]);
+    expect(() => parseAclConfig(rule(["a/#/b"]))).toThrow(AclConfigError);
+    expect(() => parseAclConfig(rule(["a/b"]))).not.toThrow();
   });
 });

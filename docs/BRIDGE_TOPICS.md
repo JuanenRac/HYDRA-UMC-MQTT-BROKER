@@ -133,7 +133,9 @@ action type exists for them today; see `HYDRA-UMC-BRIDGE-ROS2`'s own
 
 Each bridge connects with a distinct MQTT client ID prefix
 (`hydra-umc-bridge-cnc`, `-laser`, `-openpnp`, `-printer3d`, `-ros2` -
-each bridge's own `run_forever()` default `client_id`), so `src/acl.ts`
+each bridge's own `run_forever()` default `client_id`; the broker accepts
+client IDs of up to 128 characters, also at MQTT 3.1, so the longer ones such
+as `hydra-umc-bridge-printer3d` connect), so `src/acl.ts`
 can scope every bridge to publish only inside its own
 `hydra/bridges/<name>/#` and subscribe only to its own `hydra/bridges/
 <name>/cmd/#` - see `.env.example`'s own `MQTT_ACL_JSON` for a real

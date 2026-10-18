@@ -16,7 +16,7 @@
 
 ---
 
-**诚实核查 - 今天真正能运行的部分：** broker 传输层(`src/server.ts`)、主题 ACL(`src/acl.ts`)以及 CONNECT 认证(`src/auth.ts`)都是真实的并经过测试(9 个文件共 84 个测试通过：`tests/server.test.ts`、`tests/acl.test.ts`、`tests/acl-broker.test.ts`、`tests/auth.test.ts`、`tests/auth-broker.test.ts`、`tests/ws-broker.test.ts`），并且 `tsc --noEmit` 检查干净。这些并非针对模拟内部结构的孤立单元测试——`tests/server.test.ts` 通过一个真实的 TCP 套接字，用真实的 `mqtt` 客户端库连接到一个真实运行中的 Aedes broker，一个真实的缺陷正是这样被发现的(Aedes 1.x 的 `broker.listen()` 步骤被跳过，导致每一次 CONNECT 都静默挂起)。MQTT-over-WebSocket 监听器和负载大小限制也是同样的情况：真实、可选，并且经过 broker 级别的测试。真正尚未构建的部分：mDNS/Home Assistant 发现功能仅处于计划阶段——`server.ts` 目前只是一个纯 TCP 监听器，没有任何发现服务；下方图中的 `hydra/swarm/...` 主题结构是未来的预期形态，要等到 HYDRA-UMC-SERVER 自身的状态被桥接到 MQTT 之后才会出现，而这尚未发生；今天真正实现并接好线的，只有 5 个外部机器桥接的 `hydra/bridges/<name>/...` 主题。具体已交付的内容请见 `CHANGELOG.md`。
+**诚实核查 - 今天真正能运行的部分：** broker 传输层(`src/server.ts`)、主题 ACL(`src/acl.ts`)以及 CONNECT 认证(`src/auth.ts`)都是真实的并经过测试(10 个文件共 96 个测试通过），并且 `tsc --noEmit` 检查干净。这些并非针对模拟内部结构的孤立单元测试——`tests/server.test.ts` 通过一个真实的 TCP 套接字，用真实的 `mqtt` 客户端库连接到一个真实运行中的 Aedes broker，一个真实的缺陷正是这样被发现的(Aedes 1.x 的 `broker.listen()` 步骤被跳过，导致每一次 CONNECT 都静默挂起)。MQTT-over-WebSocket 监听器和负载大小限制也是同样的情况：真实、可选，并且经过 broker 级别的测试。真正尚未构建的部分：mDNS/Home Assistant 发现功能仅处于计划阶段——`server.ts` 目前只是一个纯 TCP 监听器，没有任何发现服务；下方图中的 `hydra/swarm/...` 主题结构是未来的预期形态，要等到 HYDRA-UMC-SERVER 自身的状态被桥接到 MQTT 之后才会出现，而这尚未发生；今天真正实现并接好线的，只有 5 个外部机器桥接的 `hydra/bridges/<name>/...` 主题。具体已交付的内容请见 `CHANGELOG.md`。
 
 ---
 
@@ -31,7 +31,7 @@ Assistant）能够订阅机器人遥测数据并发布指令。
 
 ### 关键特性：
 * 🔌 **外部机器桥接:** `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/`-PRINTER3D`/`-ROS2` 各自通过自己的 `hydra/bridges/<name>/...` 主题连接到本代理——参见 `docs/BRIDGE_TOPICS.md`。*(已实现)*
-* 📡 **发布/订阅遥测：** 关节角度、工具状态和系统健康状况的亚毫秒级分发。
+* 📡 **发布/订阅遥测：** 关节角度、工具状态和系统健康状况的亚毫秒级分发。（计划中：机器人状态尚未经过代理；目前只有机床桥接器的 `hydra/bridges/<name>/...` 主题）
 * 🛠️ **发现支持：** mDNS 和 Home Assistant 自动发现，便于设置。*（计划中——尚未实现；`src/server.ts` 目前只是一个纯 TCP 监听器，没有任何发现服务）*
 * 🔐 **主题安全：** 真实、可验证的按客户端 ID 前缀划分的 ACL，用于读写特定的机器人主题——带通配符的 SUBSCRIBE 永远无法获得比其规则更宽的访问权限。*(已实现)*
 * 🪪 **客户端认证：** 可选的真实 MQTT CONNECT 用户名/密码认证（`MQTT_AUTH_JSON`）为 ACL 提供经过验证的会话身份——同时也会强制执行每个凭据自身要求的 `clientIdPrefix`,这样一个有效但权限较低的凭据就不能简单地选择另一个权限更高的客户端 ID 来继承其 ACL 权限。*(已实现；应与 ACL 配合使用)*
@@ -40,6 +40,7 @@ Assistant）能够订阅机器人遥测数据并发布指令。
 * ⏳ **保留消息过期：** 面向保留(retained)消息的真实、可选 TTL(`retainedTtlMs` 选项 / `MQTT_RETAINED_TTL_MS` 环境变量)——超过该期限的保留状态会被主动清除，而不是永远发送给此后的每一个订阅者。*（已实现）*
 * 🛡️ **生产策略：** 生产环境启动（Dockerfile 设置的 `NODE_ENV=production`）在以下情况会拒绝运行：没有 `MQTT_AUTH_JSON` 和 `MQTT_ACL_JSON`、密码少于 16 个字符或为示例值、没有覆盖每个凭据前缀的 ACL 规则；`MQTT_ALLOW_ANONYMOUS=1` 表示有意运行开放的实验室代理。ACL 按凭据所证明的身份（其自身的 `clientIdPrefix`）而不是客户端自选的客户端 ID 来评估；除非 `MQTT_RETAINED_TTL_MS` 另有设置，保留消息 24 小时后过期；`MQTT_BIND_HOST` / `MQTT_METRICS_HOST` 选择监听器绑定的网卡。*（已实现）*
 * 📊 **Prometheus 指标：** 真实、可选的 `GET /metrics` 监听器(`metricsPort` 选项 / `MQTT_METRICS_PORT` 环境变量，默认端口 9883)，以标准 Prometheus 文本格式报告已连接客户端数、收到的消息总数，以及总的进/出字节数。*（已实现）*
+* 🔒 **TLS：** 真实、可选的 TLS 上的 MQTT（`MQTT_TLS_CERT` / `MQTT_TLS_KEY`，端口 8883，另可通过 `MQTT_WSS_PORT` 提供安全 WebSocket）以及可选的双向 TLS（`MQTT_TLS_CA` 配合 `MQTT_TLS_REQUIRE_CLIENT_CERT=1`）。*（已实现）*
 
 ---
 

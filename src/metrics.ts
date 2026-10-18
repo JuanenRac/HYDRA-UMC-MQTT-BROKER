@@ -24,12 +24,13 @@
 export interface TrackableSocket {
   bytesRead: number;
   bytesWritten: number;
-  once(event: "close", listener: () => void): unknown;
+  once(event: "close" | "error", listener: () => void): unknown;
 }
 
 export interface MetricsSnapshot {
   connectedClients: number;
   messagesTotal: number;
+  aclDeniedTotal: number;
   bytesInTotal: number;
   bytesOutTotal: number;
 }
@@ -37,6 +38,7 @@ export interface MetricsSnapshot {
 export class MetricsRegistry {
   private connectedClients = 0;
   private messagesTotal = 0;
+  private aclDeniedTotal = 0;
   private closedBytesIn = 0;
   private closedBytesOut = 0;
   // Real per-connection byte counts (Node maintains `bytesRead`/
@@ -58,16 +60,29 @@ export class MetricsRegistry {
     this.messagesTotal += 1;
   }
 
+  /** One PUBLISH or SUBSCRIBE refused by the topic ACL. */
+  aclDenied(): void {
+    this.aclDeniedTotal += 1;
+  }
+
   /** Starts counting one real connection's bytes in/out. Safe to call for
    * both the plain-TCP listener's sockets and the WebSocket HTTP listener's
    * underlying raw sockets - either way it's the same real byte counters. */
   trackSocket(socket: TrackableSocket): void {
     this.openSockets.add(socket);
-    socket.once("close", () => {
+    // "close" follows every "error" on a net.Socket, but a transport that
+    // never reaches it would leave the entry (and its bytes) here for good,
+    // so both end the tracking, once.
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
       this.closedBytesIn += socket.bytesRead;
       this.closedBytesOut += socket.bytesWritten;
       this.openSockets.delete(socket);
-    });
+    };
+    socket.once("close", finish);
+    socket.once("error", finish);
   }
 
   snapshot(): MetricsSnapshot {
@@ -80,6 +95,7 @@ export class MetricsRegistry {
     return {
       connectedClients: this.connectedClients,
       messagesTotal: this.messagesTotal,
+      aclDeniedTotal: this.aclDeniedTotal,
       bytesInTotal: this.closedBytesIn + openBytesIn,
       bytesOutTotal: this.closedBytesOut + openBytesOut,
     };
@@ -98,6 +114,9 @@ export class MetricsRegistry {
       "# HELP hydra_mqtt_messages_total Total PUBLISH messages received from real clients since startup.",
       "# TYPE hydra_mqtt_messages_total counter",
       `hydra_mqtt_messages_total ${s.messagesTotal}`,
+      "# HELP hydra_mqtt_acl_denied_total PUBLISH and SUBSCRIBE requests refused by the topic ACL since startup.",
+      "# TYPE hydra_mqtt_acl_denied_total counter",
+      `hydra_mqtt_acl_denied_total ${s.aclDeniedTotal}`,
       "# HELP hydra_mqtt_bytes_in_total Total bytes read from client connections since startup.",
       "# TYPE hydra_mqtt_bytes_in_total counter",
       `hydra_mqtt_bytes_in_total ${s.bytesInTotal}`,

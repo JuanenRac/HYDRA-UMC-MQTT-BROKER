@@ -24,6 +24,17 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.1.4] - TLS, orderly shutdown, WebSocket cleanup and retained expiry without a live delivery
+
+- Retained messages that reach `MQTT_RETAINED_TTL_MS` are now removed straight from the store. Before, the expiry published an empty message that live subscribers received as a fresh (empty) command.
+- Optional TLS: `MQTT_TLS_CERT` / `MQTT_TLS_KEY` open an MQTT-over-TLS listener (`MQTT_TLS_PORT`, default 8883) and `MQTT_WSS_PORT` a secure WebSocket one; `MQTT_TLS_CA` with `MQTT_TLS_REQUIRE_CLIENT_CERT=1` requires a client certificate.
+- A WebSocket connection is closed when the broker rejects its client (protocol error, failed login, ACL, keep-alive), a last DISCONNECT is no longer lost on close, frames above the payload cap are refused and `MQTT_WS_ALLOWED_ORIGINS` limits browser origins.
+- Shutdown closes the connected clients first, so SIGTERM stops the broker in a moment instead of waiting for the kill timeout.
+- Client IDs of up to 128 characters are accepted at MQTT 3.1 (the bridges' `hydra-umc-bridge-printer3d` is 26).
+- A topic filter such as `a/#/b` or `a+` in `MQTT_ACL_JSON` now stops the start instead of being read differently by the publish and subscribe checks.
+- New metric `hydra_mqtt_acl_denied_total`; a socket that errors without closing no longer stays counted.
+- The READMEs in the 8 languages list TLS and the test count (96 tests in 10 files); `.env.example`, `SECURITY.md` and `docs/BRIDGE_TOPICS.md` describe the new options and limits.
+
 ## [0.1.3] - Production policy, verified identity for the ACL, retained TTL and bind host
 
 - A production start (`NODE_ENV=production`, which the Dockerfile sets) now refuses to run without `MQTT_AUTH_JSON` and `MQTT_ACL_JSON`, with passwords of fewer than 16 characters or example values, with an ACL rule that covers the prefix of every credential, or with a rule that matches every client; `MQTT_ALLOW_ANONYMOUS=1` states on purpose that it is an open lab broker. An open start prints what it leaves unprotected.
