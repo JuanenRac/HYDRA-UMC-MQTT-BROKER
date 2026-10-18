@@ -20,6 +20,17 @@
 
 ---
 
+## 📋 Num relance
+
+| | |
+|---|---|
+| Versão | `0.1.5` |
+| Maturidade | Estabelecido |
+| Testes | 96 |
+| Tecnologia | Node.js / TypeScript / Aedes MQTT broker (MQTT 3.1.1) / MQTT over WebSockets (ws) / TLS and mutual TLS (optional) |
+| Destino | O Raspberry Pi CM5 de uma célula HYDRA-UMC |
+| Em hardware real | Ainda não: não há registo de execução em hardware real para esta versão |
+
 ## 1. 🛠️ VISÃO TÉCNICA GERAL
 
 O **HYDRA-UMC-MQTT-BROKER** oferece uma interface de mensagens leve e assíncrona para o ecossistema HYDRA-UMC. Permite que dispositivos IoT externos, painéis e sistemas de domótica (como o Home Assistant) subscrevam a telemetria dos robôs e publiquem comandos.
