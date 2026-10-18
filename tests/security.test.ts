@@ -101,6 +101,7 @@ function connect(clientId: string, username: string, password: string): Promise<
     clients.push(client);
     client.once("connect", () => resolve(client));
     client.once("error", reject);
+    client.on("error", () => { /* a late socket error after the test has moved on must not become an unhandled error */ });
   });
 }
 

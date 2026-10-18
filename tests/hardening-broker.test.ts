@@ -100,6 +100,7 @@ describe("WebSocket transport", () => {
         socket.once("open", () => { socket.close(); resolve(true); });
         socket.once("error", () => resolve(false));
         socket.once("unexpected-response", () => resolve(false));
+        socket.once("close", () => resolve(false));   // a refused upgrade may only close the socket, with no error or response event
       });
     expect(await attempt("https://evil.example")).toBe(false);
     expect(await attempt("https://studio.example")).toBe(true);
