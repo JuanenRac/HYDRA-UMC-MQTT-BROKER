@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "ecosystem": "HYDRA-UMC",
   "name": "HYDRA-UMC-MQTT-BROKER",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "role": "service",
   "stack": "node",
   "technologies": [
@@ -13,7 +13,7 @@
     "TLS and mutual TLS (optional)"
   ],
   "deployment_target": "cm5",
-  "maturity": "established",
+  "maturity": "functional",
   "family": "Industrial Gateway",
   "parent": "HYDRA-UMC-GATEWAY-INDUSTRIAL",
   "build": "npm install && npm run build.",
