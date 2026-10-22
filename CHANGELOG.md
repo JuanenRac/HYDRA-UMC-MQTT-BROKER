@@ -4,6 +4,10 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- A password in `MQTT_AUTH_JSON` may be stored as a scrypt hash (`scrypt$N$r$p$salt$hash`, written by `npm run hash-password`); plain passwords keep working, a malformed hash stops the start, and the hash is derived off the event loop. A production start does not judge the length of a hash.
+- `MQTT_TLS_CERT_IDENTITY=1` (with mutual TLS) identifies a client by the CN of its verified certificate, which must prefix its client ID, and applies the ACL of that name with no password; it works over TLS and secure WebSocket, and a production start then does not demand `MQTT_AUTH_JSON`. Off by default.
+- `MQTT_CONNECT_TIMEOUT_MS`, `MQTT_KEEPALIVE_LIMIT_SECONDS` and `MQTT_QUEUE_LIMIT` set the matching limits of the broker; unset keeps the defaults.
+- The README counters say 155 tests in 12 files.
 - Building no longer changes the version; raising it is the explicit `bump` command (`python tools/hydra_project_tool.py bump`). The build scripts only report the version they built, and CI fails if a build script runs a bump.
 - The banner follows the animated style of the ecosystem banners, with the name, the kind and the technologies of the project.
 - Added `tools/hydra_project_tool.py`: the same `validate`, `test`, `version`, `status` and `bump` commands in every repository. The checks run with `HYDRA_UMC_CI=1` and fail if the version changes; only `bump` changes it.

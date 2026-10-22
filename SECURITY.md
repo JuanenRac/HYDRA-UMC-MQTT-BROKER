@@ -31,7 +31,13 @@ listener sends credentials in clear text. On an untrusted network turn on the
 built-in TLS (`MQTT_TLS_CERT` and `MQTT_TLS_KEY`, optionally mutual TLS with
 `MQTT_TLS_CA`) and bind the plain listeners to `127.0.0.1` with
 `MQTT_BIND_HOST` or do not publish their ports. Browser access over
-WebSocket can be limited to known origins with `MQTT_WS_ALLOWED_ORIGINS`. Never
-commit production secrets.
+WebSocket can be limited to known origins with `MQTT_WS_ALLOWED_ORIGINS`. Passwords in `MQTT_AUTH_JSON` may be stored hashed
+(`scrypt$N$r$p$salt$hash`, written by `npm run hash-password`), so the
+configuration does not hold the secret itself. `MQTT_TLS_CERT_IDENTITY=1` (with
+mutual TLS) lets a verified client certificate be the identity instead of a
+password: its CN must prefix the client ID and the ACL of that name applies.
+`MQTT_CONNECT_TIMEOUT_MS`, `MQTT_KEEPALIVE_LIMIT_SECONDS` and `MQTT_QUEUE_LIMIT`
+bound how long a connection may stay silent and how many packets it may queue.
+Never commit production secrets.
 
 We follow a coordinated disclosure policy to ensure hardware safety before public release.

@@ -31,7 +31,7 @@ import { readPackageVersion } from "./version.js";
 import { type AclRule, isPublishAllowed, isSubscribeAllowed, parseAclConfig } from "./acl.js";
 import {
   type BrokerCredential,
-  authenticatedPrefix,
+  authenticatedPrefixAsync,
   parseCredentialsConfig,
 } from "./auth.js";
 import { DEFAULT_PRODUCTION_RETAINED_TTL_MS, isProduction, openStartWarnings, productionProblems } from "./security.js";
@@ -103,7 +103,14 @@ export interface BuildBrokerOptions {
    * `DEFAULT_METRICS_PORT`, a number picks the port explicitly. */
   metricsPort?: number | true;
   /** Opt-in TLS for the MQTT listener (`tlsPort`, default 8883) and, when `wssPort` is set, for MQTT over WebSocket. PEM contents; `ca` plus `requireClientCert` turn it into mutual TLS. The plain listeners stay as they are: bind them to 127.0.0.1 or do not publish their ports when TLS is the only door. */
-  tls?: { cert: string | Buffer; key: string | Buffer; ca?: string | Buffer; requireClientCert?: boolean };
+  tls?: {
+    cert: string | Buffer;
+    key: string | Buffer;
+    ca?: string | Buffer;
+    requireClientCert?: boolean;
+    /** Opt-in: a client that presents a verified certificate is identified by the CN of its subject, and the ACL is evaluated against that CN (the client ID it declares must start with it) - no password needed. Needs `ca` and `requireClientCert`. A client without a certificate still has to use `credentials`, when there are any, and is refused otherwise. Omitted (the default) leaves the identity to the credentials as before. */
+    certIdentity?: boolean;
+  };
   /** TLS MQTT port. Only used when `tls` is set. Omitted means 8883. */
   tlsPort?: number;
   /** MQTT-over-WebSocket-over-TLS port. Only used when `tls` is set; omitted starts no WSS listener. */
@@ -114,6 +121,12 @@ export interface BuildBrokerOptions {
   host?: string;
   /** The address of the metrics listener. Omitted means the same as `host`. */
   metricsHost?: string;
+  /** Milliseconds a new connection may wait before sending CONNECT; after that it is closed. Omitted keeps Aedes's own 30000. */
+  connectTimeoutMs?: number;
+  /** The largest keep-alive (seconds) a client may ask for; a client that asks for more, or for none, is refused. Omitted accepts any keep-alive, as before. */
+  keepaliveLimitSeconds?: number;
+  /** How many packets a connection may queue before its CONNECT is processed. Omitted keeps Aedes's own 42. */
+  queueLimit?: number;
 }
 
 // Adapts one `ws` connection into the real Duplex stream `broker.handle()`
@@ -183,6 +196,21 @@ function wsToDuplex(socket: WebSocket): Duplex {
   return duplex;
 }
 
+/**
+ * The CN of the verified client certificate behind an Aedes client, or null when the connection has none (plain TCP, plain WebSocket,
+ * a TLS client without a certificate). Only a certificate the TLS layer accepted counts.
+ */
+function verifiedCertificateSubject(client: Client | null | undefined): string | null {
+  const conn = (client as unknown as { conn?: { getPeerCertificate?: unknown; peerSocket?: unknown } } | null | undefined)?.conn;
+  const socket = (typeof conn?.getPeerCertificate === "function" ? conn : conn?.peerSocket) as
+    | { authorized?: boolean; getPeerCertificate?: () => { subject?: { CN?: string | string[] } } }
+    | undefined;
+  if (!socket || socket.authorized !== true || typeof socket.getPeerCertificate !== "function") return null;
+  const common = socket.getPeerCertificate()?.subject?.CN;
+  const name = Array.isArray(common) ? common[0] : common;
+  return typeof name === "string" && name.length > 0 ? name : null;
+}
+
 /** Whether `origin` may open an MQTT-over-WebSocket connection. */
 function originAllowed(origin: string | undefined, allowed: string[] | undefined): boolean {
   if (!allowed || allowed.length === 0) return true;
@@ -228,13 +256,31 @@ export async function buildBroker(
   ) {
     throw new RangeError("retainedTtlMs must be a positive safe integer");
   }
+  for (const [name, value] of [
+    ["connectTimeoutMs", options.connectTimeoutMs],
+    ["keepaliveLimitSeconds", options.keepaliveLimitSeconds],
+    ["queueLimit", options.queueLimit],
+  ] as const) {
+    if (value !== undefined && (!Number.isSafeInteger(value) || value <= 0)) {
+      throw new RangeError(`${name} must be a positive safe integer`);
+    }
+  }
+  if (options.tls?.certIdentity && (!options.tls.ca || options.tls.requireClientCert !== true)) {
+    throw new RangeError("tls.certIdentity needs tls.ca and tls.requireClientCert");
+  }
   // Real counters, always maintained regardless of whether `metricsPort` is
   // set - a caller can read `metrics.snapshot()` directly (as tests below
   // do) even with no HTTP listener running.
   const metrics = new MetricsRegistry();
   // maxClientsIdLength: MQTT 3.1 caps a client ID at 23 characters and Aedes enforces
   // that for protocol level 3, which would refuse the bridges' longer IDs.
-  const broker = new Aedes({ id: "hydra-umc-mqtt-broker", maxClientsIdLength: 128 });
+  const broker = new Aedes({
+    id: "hydra-umc-mqtt-broker",
+    maxClientsIdLength: 128,
+    ...(options.connectTimeoutMs !== undefined ? { connectTimeout: options.connectTimeoutMs } : {}),
+    ...(options.keepaliveLimitSeconds !== undefined ? { keepaliveLimit: options.keepaliveLimitSeconds } : {}),
+    ...(options.queueLimit !== undefined ? { queueLimit: options.queueLimit } : {}),
+  });
   const host = options.host ?? "0.0.0.0";
   const metricsHost = options.metricsHost ?? host;
   // The verified principal of each authenticated client (the prefix of the credential it proved). The ACL is evaluated against it, not against the client ID the client chose.
@@ -249,24 +295,46 @@ export async function buildBroker(
   // inspection.
   await broker.listen();
 
-  if (options.credentials) {
-    const credentials = options.credentials;
+  const certIdentity = options.tls?.certIdentity === true;
+  if (options.credentials || certIdentity) {
+    const credentials = options.credentials ?? [];
     broker.authenticate = (client, username, password, callback) => {
+      const reject = () => {
+        // MQTT 3.1.1 CONNACK code 4: bad username or password. Aedes requires
+        // this property to reject CONNECT without accepting a usable session.
+        const error = Object.assign(new Error("MQTT authentication failed"), { returnCode: 4 as const });
+        callback(error, false);
+      };
+      if (certIdentity) {
+        const subject = verifiedCertificateSubject(client);
+        if (subject !== null) {
+          // the client ID must start with the certificate's own name, as a credential's prefix is bound to its ID
+          if (client?.id.startsWith(subject)) {
+            principals.set(client, subject);
+            callback(null, true);
+          } else {
+            reject();
+          }
+          return;
+        }
+      }
       // client.id is already populated from the real CONNECT
       // packet at this point (Aedes parses it before calling authenticate)
       // - binding it here is what stops a validly-authenticated, low-
       // privilege user from simply declaring a different, privileged
       // client ID to pass src/acl.ts's own prefix-based rules.
-      const principal = authenticatedPrefix(credentials, username, password, client?.id);
-      if (principal !== null) {
-        if (client) principals.set(client, principal);
-        callback(null, true);
-        return;
-      }
-      // MQTT 3.1.1 CONNACK code 4: bad username or password. Aedes requires
-      // this property to reject CONNECT without accepting a usable session.
-      const error = Object.assign(new Error("MQTT authentication failed"), { returnCode: 4 as const });
-      callback(error, false);
+      // The password check of a hashed credential runs in the thread pool, not on the event loop.
+      authenticatedPrefixAsync(credentials, username, password, client?.id).then(
+        (principal) => {
+          if (principal !== null) {
+            if (client) principals.set(client, principal);
+            callback(null, true);
+          } else {
+            reject();
+          }
+        },
+        () => reject(),
+      );
     };
   }
 
@@ -401,8 +469,10 @@ export async function buildBroker(
       ...(options.maxPayloadBytes !== undefined ? { maxPayload: options.maxPayloadBytes + 65536 } : {}),
       verifyClient: (info: { origin: string }) => originAllowed(info.origin || undefined, options.wsAllowedOrigins),
     });
-    wsSocketServer.on("connection", (socket) => {
+    wsSocketServer.on("connection", (socket, request) => {
       const stream = wsToDuplex(socket);
+      // the TLS socket under a secure WebSocket, for the certificate identity
+      (stream as unknown as { peerSocket: unknown }).peerSocket = request.socket;
       // A WS transport error (client vanished mid-frame, a malformed
       // frame) would otherwise crash the process as an unhandled 'error'
       // on the wrapped Duplex - the broker.on("client"/"clientDisconnect")
@@ -574,6 +644,7 @@ function loadBrokerOptionsFromEnv(): BuildBrokerOptions {
         key: readFileSync(process.env.MQTT_TLS_KEY),
         ...(process.env.MQTT_TLS_CA ? { ca: readFileSync(process.env.MQTT_TLS_CA) } : {}),
         requireClientCert: process.env.MQTT_TLS_REQUIRE_CLIENT_CERT === "1",
+        certIdentity: process.env.MQTT_TLS_CERT_IDENTITY === "1",
       };
     } catch (err) {
       console.error(`[HYDRA-UMC-MQTT-BROKER] cannot read the TLS files: ${(err as Error).message}`);
@@ -581,6 +652,10 @@ function loadBrokerOptionsFromEnv(): BuildBrokerOptions {
     }
     if (options.tls.requireClientCert && !options.tls.ca) {
       console.error("[HYDRA-UMC-MQTT-BROKER] MQTT_TLS_REQUIRE_CLIENT_CERT=1 needs MQTT_TLS_CA");
+      process.exit(1);
+    }
+    if (options.tls.certIdentity && !options.tls.requireClientCert) {
+      console.error("[HYDRA-UMC-MQTT-BROKER] MQTT_TLS_CERT_IDENTITY=1 needs MQTT_TLS_REQUIRE_CLIENT_CERT=1 and MQTT_TLS_CA");
       process.exit(1);
     }
     for (const [name, key] of [["MQTT_TLS_PORT", "tlsPort"], ["MQTT_WSS_PORT", "wssPort"]] as const) {
@@ -599,6 +674,21 @@ function loadBrokerOptionsFromEnv(): BuildBrokerOptions {
     options.wsAllowedOrigins = process.env.MQTT_WS_ALLOWED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean);
   }
 
+  for (const [name, key] of [
+    ["MQTT_CONNECT_TIMEOUT_MS", "connectTimeoutMs"],
+    ["MQTT_KEEPALIVE_LIMIT_SECONDS", "keepaliveLimitSeconds"],
+    ["MQTT_QUEUE_LIMIT", "queueLimit"],
+  ] as const) {
+    const raw = process.env[name];
+    if (!raw) continue;
+    const value = Number(raw);
+    if (!Number.isSafeInteger(value) || value <= 0) {
+      console.error(`[HYDRA-UMC-MQTT-BROKER] ${name} must be a positive integer, got: ${raw}`);
+      process.exit(1);
+    }
+    options[key] = value;
+  }
+
   if (process.env.MQTT_BIND_HOST) options.host = process.env.MQTT_BIND_HOST.trim();
   if (process.env.MQTT_METRICS_HOST) options.metricsHost = process.env.MQTT_METRICS_HOST.trim();
 
@@ -614,13 +704,13 @@ function loadBrokerOptionsFromEnv(): BuildBrokerOptions {
     options.retainedTtlMs = DEFAULT_PRODUCTION_RETAINED_TTL_MS;
   }
 
-  const problems = productionProblems(options, process.env);
+  const problems = productionProblems({ ...options, certIdentity: options.tls?.certIdentity }, process.env);
   if (problems.length > 0) {
     for (const problem of problems) console.error(`[HYDRA-UMC-MQTT-BROKER] refusing to start in production: ${problem}`);
     console.error("[HYDRA-UMC-MQTT-BROKER] set MQTT_AUTH_JSON and MQTT_ACL_JSON (see docs), or MQTT_ALLOW_ANONYMOUS=1 for an open lab broker.");
     process.exit(1);
   }
-  for (const warning of openStartWarnings(options)) console.warn(`[HYDRA-UMC-MQTT-BROKER] WARNING: ${warning}`);
+  for (const warning of openStartWarnings({ ...options, certIdentity: options.tls?.certIdentity })) console.warn(`[HYDRA-UMC-MQTT-BROKER] WARNING: ${warning}`);
 
   return options;
 }

@@ -9,7 +9,7 @@
 // =============================================================================
 
 import type { AclRule } from "./acl.js";
-import type { BrokerCredential } from "./auth.js";
+import { type BrokerCredential, isHashedPassword } from "./auth.js";
 
 export const MIN_PASSWORD_LENGTH = 16;
 /** How long a retained message lives on a production broker when the installation sets no MQTT_RETAINED_TTL_MS of its own: a stale retained command is not replayed for ever. */
@@ -31,13 +31,16 @@ export function ruleForPrefix(rules: readonly AclRule[], prefix: string): AclRul
 }
 
 /** Everything that makes a production configuration unacceptable (empty when it is fine). */
-export function productionProblems(options: { credentials?: readonly BrokerCredential[]; acl?: readonly AclRule[] }, env: Record<string, string | undefined>): string[] {
+export function productionProblems(options: { credentials?: readonly BrokerCredential[]; acl?: readonly AclRule[]; certIdentity?: boolean }, env: Record<string, string | undefined>): string[] {
   if (!isProduction(env) || anonymousAllowed(env)) return [];
   const problems: string[] = [];
-  if (!options.credentials || options.credentials.length === 0) problems.push("MQTT_AUTH_JSON is not set: without credentials anybody on the network can publish and subscribe");
+  // with MQTT_TLS_CERT_IDENTITY=1 the verified client certificate is the identity, so credentials are optional
+  if ((!options.credentials || options.credentials.length === 0) && !options.certIdentity) problems.push("MQTT_AUTH_JSON is not set: without credentials anybody on the network can publish and subscribe");
   if (!options.acl || options.acl.length === 0) problems.push("MQTT_ACL_JSON is not set: without an ACL every client can use every topic");
   for (const credential of options.credentials ?? []) {
-    if (PLACEHOLDER.test(credential.password)) problems.push(`the password of '${credential.username}' is an example value`);
+    if (isHashedPassword(credential.password)) {
+      // a hash says nothing about the password it hides: its length and wording cannot be judged
+    } else if (PLACEHOLDER.test(credential.password)) problems.push(`the password of '${credential.username}' is an example value`);
     else if (credential.password.length < MIN_PASSWORD_LENGTH) problems.push(`the password of '${credential.username}' has fewer than ${MIN_PASSWORD_LENGTH} characters`);
     if (options.acl && options.acl.length > 0 && !ruleForPrefix(options.acl, credential.clientIdPrefix)) {
       problems.push(`no ACL rule covers the client ID prefix '${credential.clientIdPrefix}' of '${credential.username}' (a rule's prefix must be a prefix of the credential's own)`);
@@ -50,9 +53,9 @@ export function productionProblems(options: { credentials?: readonly BrokerCrede
 }
 
 /** What an open (development) start should say loudly. */
-export function openStartWarnings(options: { credentials?: readonly BrokerCredential[]; acl?: readonly AclRule[] }): string[] {
+export function openStartWarnings(options: { credentials?: readonly BrokerCredential[]; acl?: readonly AclRule[]; certIdentity?: boolean }): string[] {
   const warnings: string[] = [];
-  if (!options.credentials || options.credentials.length === 0) warnings.push("no MQTT_AUTH_JSON: any client can connect, and its ACL identity is a client ID it chose itself");
+  if ((!options.credentials || options.credentials.length === 0) && !options.certIdentity) warnings.push("no MQTT_AUTH_JSON: any client can connect, and its ACL identity is a client ID it chose itself");
   if (!options.acl || options.acl.length === 0) warnings.push("no MQTT_ACL_JSON: every client can publish and subscribe to every topic");
   return warnings;
 }

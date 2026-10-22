@@ -16,7 +16,7 @@
 
 ---
 
-**正直な現状確認 - 今日実際に動くもの:** ブローカーのトランスポート層(`src/server.ts`)、トピック ACL(`src/acl.ts`)、そして CONNECT 認証(`src/auth.ts`)は本物であり、テスト済みである(10 ファイルにわたり 96 件のテストが成功)。`tsc --noEmit` もクリーンである。これらはモック化された内部実装に対する分離された単体テストではない——`tests/server.test.ts` は本物の TCP ソケットを介して本物の `mqtt` クライアントライブラリを、実際に稼働している本物の Aedes ブローカーに接続しており、まさにこの方法で実際のバグ(Aedes 1.x の `broker.listen()` ステップが省略され、すべての CONNECT が静かにハングしていた問題)が実際に発見された。MQTT over WebSocket リスナーとペイロードサイズ制限も同様である: 本物で、オプトインであり、ブローカーレベルでテストされている。実際にまだ構築されていないもの: mDNS/Home Assistant ディスカバリーは計画段階にすぎない——`server.ts` は現在、いかなるディスカバリーサービスも持たない単純な TCP リスナーである——そして下記の図にある `hydra/swarm/...` というトピック形状は、HYDRA-UMC-SERVER 自身の状態が MQTT にブリッジされた後に想定される将来の形であり、それはまだ実現していない。今日実際に本物として実装され配線されているのは、5 つの外部マシンブリッジの `hydra/bridges/<name>/...` トピックのみである。これまでに何が実際に出荷されたかは `CHANGELOG.md` を参照。
+**正直な現状確認 - 今日実際に動くもの:** ブローカーのトランスポート層(`src/server.ts`)、トピック ACL(`src/acl.ts`)、そして CONNECT 認証(`src/auth.ts`)は本物であり、テスト済みである(12 ファイルにわたり 155 件のテストが成功)。`tsc --noEmit` もクリーンである。これらはモック化された内部実装に対する分離された単体テストではない——`tests/server.test.ts` は本物の TCP ソケットを介して本物の `mqtt` クライアントライブラリを、実際に稼働している本物の Aedes ブローカーに接続しており、まさにこの方法で実際のバグ(Aedes 1.x の `broker.listen()` ステップが省略され、すべての CONNECT が静かにハングしていた問題)が実際に発見された。MQTT over WebSocket リスナーとペイロードサイズ制限も同様である: 本物で、オプトインであり、ブローカーレベルでテストされている。実際にまだ構築されていないもの: mDNS/Home Assistant ディスカバリーは計画段階にすぎない——`server.ts` は現在、いかなるディスカバリーサービスも持たない単純な TCP リスナーである——そして下記の図にある `hydra/swarm/...` というトピック形状は、HYDRA-UMC-SERVER 自身の状態が MQTT にブリッジされた後に想定される将来の形であり、それはまだ実現していない。今日実際に本物として実装され配線されているのは、5 つの外部マシンブリッジの `hydra/bridges/<name>/...` トピックのみである。これまでに何が実際に出荷されたかは `CHANGELOG.md` を参照。
 
 ---
 
@@ -28,7 +28,7 @@
 |---|---|
 | バージョン | `0.1.6` |
 | 成熟度 | 機能する |
-| テスト | 96 |
+| テスト | 155 |
 | 技術 | Node.js / TypeScript / Aedes MQTT broker (MQTT 3.1.1) / MQTT over WebSockets (ws) / TLS and mutual TLS (optional) |
 | 対象 | HYDRA-UMC セルの Raspberry Pi CM5 |
 | 実機での確認 | まだです：このバージョンについて実機での動作記録はありません |
@@ -54,6 +54,7 @@ MQTT 3.1.1 標準を実装しており(Aedes 経由、実機で検証済み - �
 * ⏳ **retained メッセージの有効期限：** retained メッセージ向けの本物のオプトイン TTL(`retainedTtlMs` オプション / `MQTT_RETAINED_TTL_MS` 環境変数)——制限より古い retained 状態は、以後すべての購読者に永久に配信され続けるのではなく、実際に消去される。*（実装済み）*
 * 🛡️ **本番ポリシー：** 本番起動（Dockerfile が設定する `NODE_ENV=production`）では、`MQTT_AUTH_JSON` と `MQTT_ACL_JSON` がない場合、16 文字未満または例のパスワードの場合、すべての認証情報のプレフィックスを網羅する ACL ルールがない場合は起動を拒否します。`MQTT_ALLOW_ANONYMOUS=1` は、意図的にオープンなラボ用ブローカーであることを示します。ACL はクライアントが選んだクライアント ID ではなく、認証情報が証明した ID（その `clientIdPrefix`）で評価されます。`MQTT_RETAINED_TTL_MS` で別の指定がない限り、retained メッセージは 24 時間で期限切れになります。`MQTT_BIND_HOST` / `MQTT_METRICS_HOST` でリスナーがバインドするインターフェースを選べます。*（実装済み）*
 * 🔒 **TLS：** 実際に動作するオプションの TLS 上の MQTT（`MQTT_TLS_CERT` / `MQTT_TLS_KEY`、ポート 8883、`MQTT_WSS_PORT` による安全な WebSocket）と、オプションの相互 TLS（`MQTT_TLS_CA` と `MQTT_TLS_REQUIRE_CLIENT_CERT=1`）。*（実装済み）*
+* 🧰 **ハッシュ化パスワード・証明書による識別・遅いクライアントへの制限(すべて任意):** `MQTT_AUTH_JSON` のパスワードは `scrypt$...` として保存できます(`npm run hash-password` で作成。平文パスワードも引き続き使え、ハッシュはイベントループの外で計算されます)。`MQTT_TLS_CERT_IDENTITY=1`(相互 TLS と併用)は、検証済みクライアント証明書の CN でクライアントを識別し(CN はクライアント ID の接頭辞である必要があります)、パスワードなしでその名前の ACL を適用します。`MQTT_CONNECT_TIMEOUT_MS`、`MQTT_KEEPALIVE_LIMIT_SECONDS`、`MQTT_QUEUE_LIMIT` は、接続が閉じられるまでにどれだけの時間・どれだけ貪欲に振る舞えるかを制限します。すべて既定では無効です。 *(実装済み)*
 * 📊 **Prometheus メトリクス：** 実際に動作するオプションの `GET /metrics` リスナー（`metricsPort` オプション / `MQTT_METRICS_PORT` 環境変数、デフォルトポート 9883）が、接続クライアント数、受信メッセージ数、ACL 拒否数、入出力バイト数を報告します。*（実装済み）*
 
 ---

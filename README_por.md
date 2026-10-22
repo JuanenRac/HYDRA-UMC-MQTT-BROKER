@@ -16,7 +16,7 @@
 
 ---
 
-**Verificação de honestidade - o que realmente funciona hoje:** o transporte do broker (`src/server.ts`), a ACL de tópicos (`src/acl.ts`), a autenticação CONNECT (`src/auth.ts`) e a política de produção (`src/security.ts`) são reais e testados (96 testes a passar em 10 ficheiros, `tests/security.test.ts`, entre outros), e `tsc --noEmit` está limpo. Não são testes unitários isolados contra componentes internos simulados - o `tests/server.test.ts` liga um cliente `mqtt` real por um socket TCP real a um broker Aedes real em execução, e foi assim que se encontrou um erro real (o passo `broker.listen()` do Aedes 1.x ser ignorado, bloqueando em silêncio todos os CONNECT). O listener MQTT-sobre-WebSocket e o limite de tamanho de payload são iguais: reais, opcionais e testados com o broker. O que genuinamente não está feito: a descoberta mDNS/Home Assistant está apenas planeada - o `server.ts` é um listener TCP simples sem qualquer serviço de descoberta - e a forma de tópicos `hydra/swarm/...` do diagrama abaixo é a forma futura pretendida quando o estado do próprio HYDRA-UMC-SERVER for ligado ao MQTT, o que ainda não aconteceu; só os tópicos `hydra/bridges/<nome>/...` das 5 pontes de máquinas externas são reais e estão ligados hoje. Veja o `CHANGELOG.md` para saber exatamente o que já foi entregue.
+**Verificação de honestidade - o que realmente funciona hoje:** o transporte do broker (`src/server.ts`), a ACL de tópicos (`src/acl.ts`), a autenticação CONNECT (`src/auth.ts`) e a política de produção (`src/security.ts`) são reais e testados (155 testes a passar em 12 ficheiros, `tests/security.test.ts`, entre outros), e `tsc --noEmit` está limpo. Não são testes unitários isolados contra componentes internos simulados - o `tests/server.test.ts` liga um cliente `mqtt` real por um socket TCP real a um broker Aedes real em execução, e foi assim que se encontrou um erro real (o passo `broker.listen()` do Aedes 1.x ser ignorado, bloqueando em silêncio todos os CONNECT). O listener MQTT-sobre-WebSocket e o limite de tamanho de payload são iguais: reais, opcionais e testados com o broker. O que genuinamente não está feito: a descoberta mDNS/Home Assistant está apenas planeada - o `server.ts` é um listener TCP simples sem qualquer serviço de descoberta - e a forma de tópicos `hydra/swarm/...` do diagrama abaixo é a forma futura pretendida quando o estado do próprio HYDRA-UMC-SERVER for ligado ao MQTT, o que ainda não aconteceu; só os tópicos `hydra/bridges/<nome>/...` das 5 pontes de máquinas externas são reais e estão ligados hoje. Veja o `CHANGELOG.md` para saber exatamente o que já foi entregue.
 
 ---
 
@@ -28,7 +28,7 @@
 |---|---|
 | Versão | `0.1.6` |
 | Maturidade | Funcional |
-| Testes | 96 |
+| Testes | 155 |
 | Tecnologia | Node.js / TypeScript / Aedes MQTT broker (MQTT 3.1.1) / MQTT over WebSockets (ws) / TLS and mutual TLS (optional) |
 | Destino | O Raspberry Pi CM5 de uma célula HYDRA-UMC |
 | Em hardware real | Ainda não: não há registo de execução em hardware real para esta versão |
@@ -51,6 +51,7 @@ Implementa o padrão MQTT 3.1.1 (através do Aedes, verificado em direto - veja 
 * 🛡️ **Política de produção:** Um arranque em produção (`NODE_ENV=production`, que o Dockerfile define) recusa-se a funcionar sem `MQTT_AUTH_JSON` e `MQTT_ACL_JSON`, com palavras-passe de menos de 16 caracteres ou de exemplo, e sem uma regra de ACL que cubra o prefixo de cada credencial; `MQTT_ALLOW_ANONYMOUS=1` diz de propósito que é um broker aberto de laboratório. A ACL avalia-se contra a identidade que a credencial provou (o seu próprio `clientIdPrefix`), e não contra o ID de cliente que o cliente escolheu; as mensagens retidas expiram às 24 horas salvo se `MQTT_RETAINED_TTL_MS` disser outra coisa; `MQTT_BIND_HOST` / `MQTT_METRICS_HOST` escolhem a interface a que os listeners se ligam. *(implementado)*
 * 📊 **Métricas Prometheus:** Listener real e opcional de `GET /metrics` (opção `metricsPort` / variável `MQTT_METRICS_PORT`, porta por defeito 9883) que reporta clientes ligados, total de mensagens recebidas e total de bytes de entrada/saída no formato de exposição padrão do Prometheus. *(implementado)*
 * 🔒 **TLS:** MQTT sobre TLS real e opcional (`MQTT_TLS_CERT` / `MQTT_TLS_KEY`, porta 8883, mais WebSocket seguro com `MQTT_WSS_PORT`) e TLS mútuo opcional (`MQTT_TLS_CA` com `MQTT_TLS_REQUIRE_CLIENT_CERT=1`). *(implementado)*
+* 🧰 **Palavras-passe com hash, identidade por certificado e limites para clientes lentos (tudo opcional):** uma palavra-passe de `MQTT_AUTH_JSON` pode ser guardada como `scrypt$...` (escreve-se com `npm run hash-password`; as palavras-passe em claro continuam a funcionar e o hash é calculado fora do ciclo de eventos); `MQTT_TLS_CERT_IDENTITY=1` (com TLS mútuo) identifica um cliente pelo CN do seu certificado verificado, que tem de ser prefixo do seu ID de cliente, e aplica a ACL desse nome sem palavra-passe; `MQTT_CONNECT_TIMEOUT_MS`, `MQTT_KEEPALIVE_LIMIT_SECONDS` e `MQTT_QUEUE_LIMIT` limitam durante quanto tempo e com quanta voracidade uma ligação se pode comportar antes de ser fechada. Tudo desligado por defeito. *(implementado)*
 
 ---
 
