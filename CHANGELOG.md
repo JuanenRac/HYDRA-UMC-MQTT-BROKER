@@ -125,28 +125,6 @@ implemented vs. planned; no behavior changed.
   that WS client is confirmed delivered to a separate TCP-connected
   subscriber - proving both transports reach the same broker.
 
-## Documentation - Corrected protocol version claim
-
-- **README (all 7 languages), `package.json`, `src/server.ts`, `CONTRIBUTING.md`** - corrected
-  "MQTT v5" to the real protocol this broker speaks: MQTT 3.1.1. `aedes@1.1.1` (the
-  pinned dependency) only implements MQTT 3.1/3.1.1; verified live by connecting a real
-  `mqtt` client with `protocolVersion: 5`, which the broker refuses with `Connection
-  refused: Unacceptable protocol version`. `CONTRIBUTING.md` also corrected "JWT-based
-  authentication" to the real mechanism (`MQTT_AUTH_JSON` CONNECT username/password) and
-  its reference to a non-existent `tests/load_test.js` to the real Vitest suite.
-  Documentation-only - no code behavior changed, no version bump.
-
-- **`src/auth.ts`** (new) - validates the `MQTT_AUTH_JSON` credential list,
-  rejects blank or duplicate user names at startup, and verifies matching
-  password buffers with Node's constant-time comparison primitive. Secrets
-  are never written to logs or errors.
-- **`src/server.ts`** - `buildBroker()` now accepts optional credentials and
-  rejects unauthenticated MQTT CONNECT attempts with the standard bad
-  username/password CONNACK outcome. Authentication remains opt-in so an
-  existing local broker stays compatible until explicitly configured.
-- **`.env.example`** documents secure deployment of `MQTT_AUTH_JSON` and why
-  authenticated identity must be paired with the topic ACL.
-
 ## [0.0.8] - External machine bridge topic catalog
 
 - **`docs/BRIDGE_TOPICS.md`** (new) - the real, shared `hydra/bridges/
@@ -231,3 +209,27 @@ implemented vs. planned; no behavior changed.
 - **`package.json`** - project metadata, no runtime dependencies yet.
 - **`build.sh` / `build.bat`** - `npm install && npm run build`.
 - **`dev.sh` / `dev.bat`** - run against source directly (no build step) for local development.
+
+## Earlier history
+
+### Documentation - Corrected protocol version claim
+
+- **README (all 7 languages), `package.json`, `src/server.ts`, `CONTRIBUTING.md`** - corrected
+  "MQTT v5" to the real protocol this broker speaks: MQTT 3.1.1. `aedes@1.1.1` (the
+  pinned dependency) only implements MQTT 3.1/3.1.1; verified live by connecting a real
+  `mqtt` client with `protocolVersion: 5`, which the broker refuses with `Connection
+  refused: Unacceptable protocol version`. `CONTRIBUTING.md` also corrected "JWT-based
+  authentication" to the real mechanism (`MQTT_AUTH_JSON` CONNECT username/password) and
+  its reference to a non-existent `tests/load_test.js` to the real Vitest suite.
+  Documentation-only - no code behavior changed, no version bump.
+
+- **`src/auth.ts`** (new) - validates the `MQTT_AUTH_JSON` credential list,
+  rejects blank or duplicate user names at startup, and verifies matching
+  password buffers with Node's constant-time comparison primitive. Secrets
+  are never written to logs or errors.
+- **`src/server.ts`** - `buildBroker()` now accepts optional credentials and
+  rejects unauthenticated MQTT CONNECT attempts with the standard bad
+  username/password CONNACK outcome. Authentication remains opt-in so an
+  existing local broker stays compatible until explicitly configured.
+- **`.env.example`** documents secure deployment of `MQTT_AUTH_JSON` and why
+  authenticated identity must be paired with the topic ACL.
