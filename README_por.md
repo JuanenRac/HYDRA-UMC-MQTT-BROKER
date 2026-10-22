@@ -131,7 +131,7 @@ npm start
 O broker escuta em `0.0.0.0:1883` (MQTT/TCP simples, a porta por defeito registada na IANA) - aponte qualquer cliente MQTT (`mosquitto_sub`, Home Assistant, MQTT Explorer, ...) a `<anfitrião>:1883`.
 
 ### Versionamento
-Cada `npm run build` real sobe automaticamente o `version` do próprio `package.json` (`scripts/bump-version.mjs`, ligado como primeiro passo do script `build`) - um "odómetro" de base 10: patch +1 por compilação, transbordando para minor (e minor para major) depois do 9 em vez de chegar a um segmento de dois dígitos (`0.0.9` -> `0.1.0`, não `0.0.10`).
+`npm run build` apenas empacota o servidor e nunca altera a versão; `python tools/hydra_project_tool.py bump` sobe-a (através de `bump_manifest_version.py`) - um "odómetro" de base 10: patch +1 por bump, transbordando para minor (e minor para major) depois do 9 em vez de chegar a um segmento de dois dígitos (`0.0.9` -> `0.1.0`, não `0.0.10`).
 
 ---
 

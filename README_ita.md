@@ -142,9 +142,7 @@ predefinita registrata IANA) - punta qualsiasi client MQTT
 (`mosquitto_sub`, Home Assistant, MQTT Explorer, ...) a `<host>:1883`.
 
 ### Versionamento
-Ogni `npm run build` reale incrementa automaticamente il `version` di
-`package.json` (`scripts/bump-version.mjs`, primo passo dello script
-`build`) - un "contachilometri" in base 10: patch +1 per build, con
+`npm run build` si limita a impacchettare il server e non cambia mai la versione; `python tools/hydra_project_tool.py bump` la alza (tramite `bump_manifest_version.py`) - un "contachilometri" in base 10: patch +1 per bump, con
 riporto a minor (e da minor a major) oltre il 9 invece di raggiungere mai
 un segmento a due cifre (`0.0.9` -> `0.1.0`, non `0.0.10`).
 

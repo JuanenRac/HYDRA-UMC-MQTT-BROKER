@@ -142,9 +142,7 @@ registrierte Standardport) - jeden MQTT-Client (`mosquitto_sub`, Home
 Assistant, MQTT Explorer, ...) auf `<host>:1883` richten.
 
 ### Versionierung
-Jeder echte `npm run build` erhöht automatisch die `version` in
-`package.json` (`scripts/bump-version.mjs`, erster Schritt des
-`build`-Skripts) - ein "Kilometerzähler" auf Basis 10: patch +1 pro Build,
+`npm run build` bündelt nur den Server und ändert die Version nie; `python tools/hydra_project_tool.py bump` erhöht sie (über `bump_manifest_version.py`) - ein "Kilometerzähler" auf Basis 10: Patch +1 pro Bump,
 mit Übertrag auf minor (und von minor auf major) über 9 hinaus, anstatt
 je ein zweistelliges Segment zu erreichen (`0.0.9` -> `0.1.0`, nicht
 `0.0.10`).

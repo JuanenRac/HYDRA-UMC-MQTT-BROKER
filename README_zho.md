@@ -143,9 +143,8 @@ Broker 监听 `0.0.0.0:1883`（纯 MQTT/TCP，IANA 注册的默认端口）—�
 指向 `<host>:1883`。
 
 ### 版本管理
-每次真实的 `npm run build` 都会自动递增 `package.json` 自身的
-`version`（`scripts/bump-version.mjs`，作为 `build` 脚本的第一步接入）
-——一种十进制"里程表"方案：每次构建 patch +1，超过 9 时进位到 minor
+`npm run build` 只负责打包服务器，绝不会更改版本；`python tools/hydra_project_tool.py bump` 才会提升它（通过 `bump_manifest_version.py`）
+——一种十进制"里程表"方案：每次 bump patch +1，超过 9 时进位到 minor
 （minor 超过 9 时进位到 major），而不会到达两位数段（`0.0.9` ->
 `0.1.0`，而非 `0.0.10`）。
 
