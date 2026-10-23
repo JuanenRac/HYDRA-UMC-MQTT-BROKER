@@ -14,7 +14,7 @@ import mqtt, { type MqttClient } from "mqtt";
 import { buildBroker } from "../src/server.js";
 import type { AclRule } from "../src/acl.js";
 import { authenticatedPrefix, type BrokerCredential } from "../src/auth.js";
-import { anonymousAllowed, openStartWarnings, productionProblems, ruleForPrefix } from "../src/security.js";
+import { anonymousAllowed, isLoopbackHost, openStartWarnings, plaintextAllowed, productionProblems, ruleForPrefix, transportProblems, transportWarnings } from "../src/security.js";
 
 const STRONG = "k3Rr-9vQp-LmN2-xZ7w-Tb4e";
 const CREDENTIALS: BrokerCredential[] = [
@@ -129,5 +129,38 @@ describe("the ACL is evaluated against the verified principal, not the client ID
     const stays = closes(again, 800);
     again.publish("hydra/bridges/status/cnc", "online", { qos: 0 });
     expect(await stays).toBe(false);
+  });
+});
+
+describe("TLS is required away from loopback", () => {
+  const tls = { cert: "c", key: "k" };
+
+  it("recognises the loopback addresses and nothing else", () => {
+    for (const host of ["127.0.0.1", "127.1.2.3", "localhost", "::1", "[::1]", " LOCALHOST "]) expect(isLoopbackHost(host)).toBe(true);
+    for (const host of [undefined, "0.0.0.0", "::", "192.168.0.180", "example.com", "127.0.0.1.evil.example"]) expect(isLoopbackHost(host)).toBe(false);
+  });
+
+  it("refuses a production start that serves plain MQTT beyond this machine without TLS", () => {
+    expect(transportProblems({}, PRODUCTION).join(" ")).toMatch(/TLS is not configured/);
+    expect(transportProblems({ host: "0.0.0.0" }, PRODUCTION)).toHaveLength(1);
+    expect(transportProblems({ host: "192.168.0.10" }, PRODUCTION)).toHaveLength(1);
+  });
+
+  it("accepts loopback, TLS, a development start, or the explicit plaintext opt-in", () => {
+    expect(transportProblems({ host: "127.0.0.1" }, PRODUCTION)).toEqual([]);
+    expect(transportProblems({ tls }, PRODUCTION)).toEqual([]);
+    expect(transportProblems({}, {})).toEqual([]);
+    expect(transportProblems({}, { ...PRODUCTION, MQTT_ALLOW_PLAINTEXT: "1" })).toEqual([]);
+    expect(plaintextAllowed({ MQTT_ALLOW_PLAINTEXT: "1" })).toBe(true);
+    expect(plaintextAllowed({ MQTT_ALLOW_PLAINTEXT: "true" })).toBe(false);
+  });
+
+  it("warns on every start about a plain listener that is not on loopback", () => {
+    expect(transportWarnings({}, {}).join(" ")).toMatch(/without TLS/);
+    expect(transportWarnings({ host: "10.0.0.5" }, {}).join(" ")).toMatch(/'10.0.0.5'/);
+    expect(transportWarnings({ tls }, {}).join(" ")).toMatch(/TLS is on, but the plain MQTT listener/);
+    expect(transportWarnings({ host: "127.0.0.1" }, {})).toEqual([]);
+    expect(transportWarnings({ host: "127.0.0.1", tls }, {})).toEqual([]);
+    expect(transportWarnings({}, { MQTT_ALLOW_PLAINTEXT: "1" }).join(" ")).toMatch(/MQTT_ALLOW_PLAINTEXT=1/);
   });
 });

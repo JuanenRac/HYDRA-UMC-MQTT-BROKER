@@ -59,3 +59,32 @@ export function openStartWarnings(options: { credentials?: readonly BrokerCreden
   if (!options.acl || options.acl.length === 0) warnings.push("no MQTT_ACL_JSON: every client can publish and subscribe to every topic");
   return warnings;
 }
+
+/** True when a bind address only accepts connections from the machine itself. An omitted address means every interface. */
+export function isLoopbackHost(host: string | undefined): boolean {
+  if (host === undefined) return false;
+  const name = host.trim().toLowerCase().replace(/^\[|\]$/g, "");
+  return name === "localhost" || name === "::1" || name === "0:0:0:0:0:0:0:1" || /^127(\.\d{1,3}){3}$/.test(name);
+}
+
+export function plaintextAllowed(env: Record<string, string | undefined>): boolean {
+  return (env.MQTT_ALLOW_PLAINTEXT ?? "").trim() === "1";
+}
+
+/**
+ * The plain MQTT and WebSocket listeners carry credentials and commands in the clear. Away from loopback they need TLS: a production start refuses to run
+ * without it unless MQTT_ALLOW_PLAINTEXT=1 says, on purpose, that the network is trusted. Empty when the start is fine.
+ */
+export function transportProblems(options: { host?: string; tls?: unknown }, env: Record<string, string | undefined>): string[] {
+  if (!isProduction(env) || plaintextAllowed(env) || isLoopbackHost(options.host)) return [];
+  if (options.tls) return [];
+  return ["TLS is not configured and the plain MQTT listener is open beyond this machine: set MQTT_TLS_CERT and MQTT_TLS_KEY, or bind to loopback with MQTT_BIND_HOST=127.0.0.1 (MQTT_ALLOW_PLAINTEXT=1 accepts a trusted network on purpose)"];
+}
+
+/** What every start (production or not) should say loudly about the transport. */
+export function transportWarnings(options: { host?: string; tls?: unknown }, env: Record<string, string | undefined>): string[] {
+  if (isLoopbackHost(options.host)) return [];
+  const where = options.host === undefined ? "every network interface" : `'${options.host}'`;
+  if (!options.tls) return [`the plain MQTT listener is bound to ${where} without TLS: credentials and commands travel in the clear${plaintextAllowed(env) ? " (MQTT_ALLOW_PLAINTEXT=1)" : ""}`];
+  return [`TLS is on, but the plain MQTT listener is still bound to ${where}: do not publish its port, or bind to 127.0.0.1 and let the TLS port be the only door`];
+}

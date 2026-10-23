@@ -16,7 +16,7 @@
 
 ---
 
-**诚实核查 - 今天真正能运行的部分：** broker 传输层(`src/server.ts`)、主题 ACL(`src/acl.ts`)以及 CONNECT 认证(`src/auth.ts`)都是真实的并经过测试(12 个文件共 155 个测试通过），并且 `tsc --noEmit` 检查干净。这些并非针对模拟内部结构的孤立单元测试——`tests/server.test.ts` 通过一个真实的 TCP 套接字，用真实的 `mqtt` 客户端库连接到一个真实运行中的 Aedes broker，一个真实的缺陷正是这样被发现的(Aedes 1.x 的 `broker.listen()` 步骤被跳过，导致每一次 CONNECT 都静默挂起)。MQTT-over-WebSocket 监听器和负载大小限制也是同样的情况：真实、可选，并且经过 broker 级别的测试。真正尚未构建的部分：mDNS/Home Assistant 发现功能仅处于计划阶段——`server.ts` 目前只是一个纯 TCP 监听器，没有任何发现服务；下方图中的 `hydra/swarm/...` 主题结构是未来的预期形态，要等到 HYDRA-UMC-SERVER 自身的状态被桥接到 MQTT 之后才会出现，而这尚未发生；今天真正实现并接好线的，只有 5 个外部机器桥接的 `hydra/bridges/<name>/...` 主题。具体已交付的内容请见 `CHANGELOG.md`。
+**诚实核查 - 今天真正能运行的部分：** broker 传输层(`src/server.ts`)、主题 ACL(`src/acl.ts`)以及 CONNECT 认证(`src/auth.ts`)都是真实的并经过测试(12 个文件共 159 个测试通过），并且 `tsc --noEmit` 检查干净。这些并非针对模拟内部结构的孤立单元测试——`tests/server.test.ts` 通过一个真实的 TCP 套接字，用真实的 `mqtt` 客户端库连接到一个真实运行中的 Aedes broker，一个真实的缺陷正是这样被发现的(Aedes 1.x 的 `broker.listen()` 步骤被跳过，导致每一次 CONNECT 都静默挂起)。MQTT-over-WebSocket 监听器和负载大小限制也是同样的情况：真实、可选，并且经过 broker 级别的测试。真正尚未构建的部分：mDNS/Home Assistant 发现功能仅处于计划阶段——`server.ts` 目前只是一个纯 TCP 监听器，没有任何发现服务；下方图中的 `hydra/swarm/...` 主题结构是未来的预期形态，要等到 HYDRA-UMC-SERVER 自身的状态被桥接到 MQTT 之后才会出现，而这尚未发生；今天真正实现并接好线的，只有 5 个外部机器桥接的 `hydra/bridges/<name>/...` 主题。具体已交付的内容请见 `CHANGELOG.md`。
 
 ---
 
@@ -28,7 +28,7 @@
 |---|---|
 | 版本 | `0.1.6` |
 | 成熟度 | 可用 |
-| 测试 | 155 |
+| 测试 | 159 |
 | 技术栈 | Node.js / TypeScript / Aedes MQTT broker (MQTT 3.1.1) / MQTT over WebSockets (ws) / TLS and mutual TLS (optional) |
 | 目标 | HYDRA-UMC 工作单元的 Raspberry Pi CM5 |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
@@ -52,6 +52,7 @@ Assistant）能够订阅机器人遥测数据并发布指令。
 * ⚡ **WebSocket 支持：** 面向浏览器端客户端的 MQTT over WebSocket——同一个 broker 实例上真实存在、可选启用的第二个监听器，与现有的纯 TCP 监听器并存(`wsPort` 选项 / `MQTT_WS_PORT` 环境变量，默认端口 8083)。*（已实现）*
 * ⏳ **保留消息过期：** 面向保留(retained)消息的真实、可选 TTL(`retainedTtlMs` 选项 / `MQTT_RETAINED_TTL_MS` 环境变量)——超过该期限的保留状态会被主动清除，而不是永远发送给此后的每一个订阅者。*（已实现）*
 * 🛡️ **生产策略：** 生产环境启动（Dockerfile 设置的 `NODE_ENV=production`）在以下情况会拒绝运行：没有 `MQTT_AUTH_JSON` 和 `MQTT_ACL_JSON`、密码少于 16 个字符或为示例值、没有覆盖每个凭据前缀的 ACL 规则；`MQTT_ALLOW_ANONYMOUS=1` 表示有意运行开放的实验室代理。ACL 按凭据所证明的身份（其自身的 `clientIdPrefix`）而不是客户端自选的客户端 ID 来评估；除非 `MQTT_RETAINED_TTL_MS` 另有设置，保留消息 24 小时后过期；`MQTT_BIND_HOST` / `MQTT_METRICS_HOST` 选择监听器绑定的网卡。*（已实现）*
+* 🔐 **非回环地址必须使用 TLS：** 当明文 MQTT 监听器对本机以外开放（默认绑定所有接口）且未配置 TLS 时，生产环境启动会拒绝运行；可用 `MQTT_BIND_HOST` 绑定到 `127.0.0.1`、配置 TLS，或用 `MQTT_ALLOW_PLAINTEXT=1` 有意接受受信任的网络。每次启动都会对不在回环地址上的明文监听器发出警告。*(已实现)*
 * 📊 **Prometheus 指标：** 真实、可选的 `GET /metrics` 监听器(`metricsPort` 选项 / `MQTT_METRICS_PORT` 环境变量，默认端口 9883)，以标准 Prometheus 文本格式报告已连接客户端数、收到的消息总数，以及总的进/出字节数。*（已实现）*
 * 🔒 **TLS：** 真实、可选的 TLS 上的 MQTT（`MQTT_TLS_CERT` / `MQTT_TLS_KEY`，端口 8883，另可通过 `MQTT_WSS_PORT` 提供安全 WebSocket）以及可选的双向 TLS（`MQTT_TLS_CA` 配合 `MQTT_TLS_REQUIRE_CLIENT_CERT=1`）。*（已实现）*
 * 🧰 **哈希密码、证书身份与慢速客户端限制（均为可选）：** `MQTT_AUTH_JSON` 中的密码可以存为 `scrypt$...`（用 `npm run hash-password` 生成；明文密码仍然可用，哈希在事件循环之外计算）；`MQTT_TLS_CERT_IDENTITY=1`（配合双向 TLS）用已验证客户端证书的 CN 识别客户端（该 CN 必须是其客户端 ID 的前缀），并在无需密码的情况下应用该名称的 ACL；`MQTT_CONNECT_TIMEOUT_MS`、`MQTT_KEEPALIVE_LIMIT_SECONDS` 和 `MQTT_QUEUE_LIMIT` 限制连接在被关闭前可以占用多长时间、多贪婪。全部默认关闭。 *(已实现)*

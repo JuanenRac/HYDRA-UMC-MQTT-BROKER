@@ -34,7 +34,7 @@ import {
   authenticatedPrefixAsync,
   parseCredentialsConfig,
 } from "./auth.js";
-import { DEFAULT_PRODUCTION_RETAINED_TTL_MS, isProduction, openStartWarnings, productionProblems } from "./security.js";
+import { DEFAULT_PRODUCTION_RETAINED_TTL_MS, isProduction, openStartWarnings, productionProblems, transportProblems, transportWarnings } from "./security.js";
 import { MetricsRegistry } from "./metrics.js";
 
 // 1883 is the IANA-registered plain-MQTT port (8883 is the TLS variant) -
@@ -710,6 +710,12 @@ function loadBrokerOptionsFromEnv(): BuildBrokerOptions {
     console.error("[HYDRA-UMC-MQTT-BROKER] set MQTT_AUTH_JSON and MQTT_ACL_JSON (see docs), or MQTT_ALLOW_ANONYMOUS=1 for an open lab broker.");
     process.exit(1);
   }
+  const transportIssues = transportProblems(options, process.env);
+  if (transportIssues.length > 0) {
+    for (const problem of transportIssues) console.error(`[HYDRA-UMC-MQTT-BROKER] refusing to start in production: ${problem}`);
+    process.exit(1);
+  }
+  for (const warning of transportWarnings(options, process.env)) console.warn(`[HYDRA-UMC-MQTT-BROKER] WARNING: ${warning}`);
   for (const warning of openStartWarnings({ ...options, certIdentity: options.tls?.certIdentity })) console.warn(`[HYDRA-UMC-MQTT-BROKER] WARNING: ${warning}`);
 
   return options;
