@@ -29,7 +29,7 @@ import { productionProblems } from "../src/security.js";
 type Built = Awaited<ReturnType<typeof buildBroker>>;
 
 // Distinct ports: vitest runs the test files in parallel workers.
-let nextPort = 42100;
+let nextPort = 18100;
 const port = () => nextPort++;
 
 const clients: MqttClient[] = [];

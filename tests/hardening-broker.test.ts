@@ -18,8 +18,8 @@ import { buildBroker, closeBroker } from "../src/server.js";
 
 type Built = Awaited<ReturnType<typeof buildBroker>>;
 
-// Distinct ports: vitest runs the test files in parallel workers.
-let nextPort = 41920;
+// Distinct ports below the range the operating system hands out to outgoing connections (32768 and up): vitest runs the test files in parallel workers.
+let nextPort = 17920;
 const port = () => nextPort++;
 
 const clients: MqttClient[] = [];
