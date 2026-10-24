@@ -26,9 +26,9 @@
 
 | | |
 |---|---|
-| Versión | `0.1.6` |
+| Versión | `0.1.7` |
 | Madurez | Funcional |
-| Tests | 159 |
+| Tests | 155 |
 | Tecnología | Node.js / TypeScript / Aedes MQTT broker (MQTT 3.1.1) / MQTT over WebSockets (ws) / TLS and mutual TLS (optional) |
 | Destino | La Raspberry Pi CM5 de una celda HYDRA-UMC |
 | En hardware real | Todavía no: no consta ninguna ejecución en hardware real para esta versión |

@@ -26,7 +26,7 @@
 
 | | |
 |---|---|
-| バージョン | `0.1.6` |
+| バージョン | `0.1.7` |
 | 成熟度 | 機能する |
 | テスト | 155 |
 | 技術 | Node.js / TypeScript / Aedes MQTT broker (MQTT 3.1.1) / MQTT over WebSockets (ws) / TLS and mutual TLS (optional) |

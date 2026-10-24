@@ -26,9 +26,9 @@
 
 | | |
 |---|---|
-| 版本 | `0.1.6` |
+| 版本 | `0.1.7` |
 | 成熟度 | 可用 |
-| 测试 | 159 |
+| 测试 | 155 |
 | 技术栈 | Node.js / TypeScript / Aedes MQTT broker (MQTT 3.1.1) / MQTT over WebSockets (ws) / TLS and mutual TLS (optional) |
 | 目标 | HYDRA-UMC 工作单元的 Raspberry Pi CM5 |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |

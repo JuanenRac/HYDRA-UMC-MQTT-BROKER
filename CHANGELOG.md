@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [0.1.7] - TLS is required away from loopback
 
 - **TLS is required away from loopback.** A production start refuses to run when the plain MQTT listener is open beyond this machine (the default is every interface) and TLS is not configured; `MQTT_BIND_HOST=127.0.0.1`, TLS, or `MQTT_ALLOW_PLAINTEXT=1` (a trusted network, on purpose) lets it start. Every start warns about a plain listener that is not on loopback, and about one that stays open next to TLS.
 - A password in `MQTT_AUTH_JSON` may be stored as a scrypt hash (`scrypt$N$r$p$salt$hash`, written by `npm run hash-password`); plain passwords keep working, a malformed hash stops the start, and the hash is derived off the event loop. A production start does not judge the length of a hash.
