@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+- The bridge topic catalog (`docs/BRIDGE_TOPICS.md`) describes the `availability` topics, the events, the MTConnect and SMEMA topics, the OpenPnP identity fields, the printer's emergency stop, who publishes the commands, and which bridges (AMR, UAV, DROIDS) it does not cover.
+
 ## [0.1.7] - TLS is required away from loopback
 
 - **TLS is required away from loopback.** A production start refuses to run when the plain MQTT listener is open beyond this machine (the default is every interface) and TLS is not configured; `MQTT_BIND_HOST=127.0.0.1`, TLS, or `MQTT_ALLOW_PLAINTEXT=1` (a trusted network, on purpose) lets it start. Every start warns about a plain listener that is not on loopback, and about one that stays open next to TLS.
