@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The layout of the README is checked in the CI:** the validator runs `tools/universal_readme_check.py` and lists, as a warning, what differs from the universal layout of the README.
 - The bridge topic catalog (`docs/BRIDGE_TOPICS.md`) describes the `availability` topics, the events, the MTConnect and SMEMA topics, the OpenPnP identity fields, the printer's emergency stop, who publishes the commands, and which bridges (AMR, UAV, DROIDS) it does not cover.
 
 ## [0.1.7] - TLS is required away from loopback
