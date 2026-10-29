@@ -1,0 +1,326 @@
+{
+  "repo": "HYDRA-UMC-MQTT-BROKER",
+  "ecosystem": "hydra",
+  "svg": "en",
+  "exempt": [
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "SUPPORT.md",
+    "LICENSE",
+    "LICENSE.md",
+    "build-test.bat",
+    "build.bat",
+    "dev.bat",
+    "package-lock.json",
+    "test.bat",
+    "tsconfig.json",
+    "vitest.config.ts"
+  ],
+  "cards": [
+    {
+      "name": {
+        "en": "folders",
+        "es": "carpetas",
+        "de": "Ordner",
+        "fr": "dossiers",
+        "it": "cartelle",
+        "ja": "フォルダ",
+        "zh": "文件夹",
+        "pt": "pastas"
+      },
+      "kind": "group",
+      "span": 3,
+      "accent": "b",
+      "columns": 2,
+      "rows": [
+        {
+          "name": "src/",
+          "desc": {
+            "en": "Source code (Node/TypeScript",
+            "es": "Código fuente (Node/TypeScript",
+            "de": "Quellcode (Node/TypeScript",
+            "fr": "Code source (Node/TypeScript",
+            "it": "Codice sorgente",
+            "ja": "ソースコード（Node/TypeScript",
+            "zh": "源代码（Node/TypeScript",
+            "pt": "Código-fonte (Node/TypeScript"
+          },
+          "tree_desc": {
+            "en": "Source code (Node/TypeScript - Broker, Bridge, Security)",
+            "es": "Código fuente (Node/TypeScript - Broker, Puente, Seguridad)",
+            "de": "Quellcode (Node/TypeScript - Broker, Bridge, Sicherheit)",
+            "fr": "Code source (Node/TypeScript - Broker, Pont, Sécurité)",
+            "it": "Codice sorgente (Node/TypeScript - Broker, Bridge, Sicurezza)",
+            "ja": "ソースコード（Node/TypeScript —— ブローカー、ブリッジ、セキュリティ）",
+            "zh": "源代码（Node/TypeScript —— Broker、桥接、安全）",
+            "pt": "Código-fonte (Node/TypeScript - Broker, Ponte, Segurança)"
+          }
+        },
+        {
+          "name": "tests/",
+          "desc": {
+            "en": "Vitest suite - ACL",
+            "es": "Suite Vitest - ACL",
+            "de": "Vitest-Suite - ACL",
+            "fr": "Suite Vitest - ACL",
+            "it": "Suite Vitest - ACL",
+            "ja": "Vitest スイート —— ACL",
+            "zh": "Vitest 测试套件——ACL",
+            "pt": "Suite Vitest - ACL"
+          },
+          "tree_desc": {
+            "en": "Vitest suite - ACL, auth, and broker/bridge behavior",
+            "es": "Suite Vitest - ACL, autenticación y comportamiento de broker/puente",
+            "de": "Vitest-Suite - ACL, Authentifizierung und Broker-/Bridge-Verhalten",
+            "fr": "Suite Vitest - ACL, authentification et comportement broker/pont",
+            "it": "Suite Vitest - ACL, autenticazione e comportamento di broker/bridge",
+            "ja": "Vitest スイート —— ACL、認証、ブローカー/ブリッジの動作",
+            "zh": "Vitest 测试套件——ACL、认证与 broker/桥接行为",
+            "pt": "Suite Vitest - ACL, autenticação e comportamento de broker/ponte"
+          }
+        },
+        {
+          "name": "docs/",
+          "desc": {
+            "en": "Documentation and topic catalog",
+            "es": "Documentación y catálogo de tópicos",
+            "de": "Dokumentation und Topic-Katalog",
+            "fr": "Documentation et catalogue de sujets",
+            "it": "Documentazione e catalogo dei topic",
+            "ja": "ドキュメントとトピックカタログ",
+            "zh": "文档与主题目录",
+            "pt": "Documentação e catálogo de tópicos"
+          },
+          "tree_desc": {
+            "en": "Documentation and topic catalog",
+            "es": "Documentación y catálogo de tópicos",
+            "de": "Dokumentation und Topic-Katalog",
+            "fr": "Documentation et catalogue de sujets",
+            "it": "Documentazione e catalogo dei topic",
+            "ja": "ドキュメントとトピックカタログ",
+            "zh": "文档与主题目录",
+            "pt": "Documentação e catálogo de tópicos"
+          }
+        },
+        {
+          "name": "images/",
+          "desc": {
+            "en": "Media and diagrams",
+            "es": "Medios y diagramas",
+            "de": "Medien und Diagramme",
+            "fr": "Médias et diagrammes",
+            "it": "Media e diagrammi",
+            "ja": "メディアと図表",
+            "zh": "媒体与图表",
+            "pt": "Multimédia e diagramas"
+          },
+          "tree_desc": {
+            "en": "Media and diagrams",
+            "es": "Medios y diagramas",
+            "de": "Medien und Diagramme",
+            "fr": "Médias et diagrammes",
+            "it": "Media e diagrammi",
+            "ja": "メディアと図表",
+            "zh": "媒体与图表",
+            "pt": "Multimédia e diagramas"
+          }
+        },
+        {
+          "name": "scripts/",
+          "desc": {
+            "en": "Utility scripts (bump-version.mjs)",
+            "es": "Scripts de utilidad (bump-version.mjs)",
+            "de": "Utility-Skripte (bump-version.mjs)",
+            "fr": "Scripts utilitaires (bump-version.mjs)",
+            "it": "Script di utilità (bump-version.mjs)",
+            "ja": "ユーティリティスクリプト（bump-vers",
+            "zh": "实用脚本（bump-version.mjs）",
+            "pt": "Scripts utilitários (bump-version.mjs)"
+          },
+          "tree_desc": {
+            "en": "Utility scripts (bump-version.mjs)",
+            "es": "Scripts de utilidad (bump-version.mjs)",
+            "de": "Utility-Skripte (bump-version.mjs)",
+            "fr": "Scripts utilitaires (bump-version.mjs)",
+            "it": "Script di utilità (bump-version.mjs)",
+            "ja": "ユーティリティスクリプト（bump-version.mjs）",
+            "zh": "实用脚本（bump-version.mjs）",
+            "pt": "Scripts utilitários (bump-version.mjs)"
+          }
+        },
+        {
+          "name": "tools/",
+          "desc": {
+            "en": "ci_validate.py",
+            "es": "ci_validate.py",
+            "de": "ci_validate.py",
+            "fr": "ci_validate.py",
+            "it": "ci_validate.py",
+            "ja": "ci_validate.py —— CI が",
+            "zh": "ci_validate.py——CI 使用的",
+            "pt": "ci_validate.py"
+          },
+          "tree_desc": {
+            "en": "ci_validate.py - manifest/CHANGELOG/docs validation used by CI",
+            "es": "ci_validate.py - validación de manifest/CHANGELOG/docs usada por la CI",
+            "de": "ci_validate.py - Manifest-/CHANGELOG-/Doku-Validierung, von der CI genutzt",
+            "fr": "ci_validate.py - validation manifest/CHANGELOG/docs utilisée par la CI",
+            "it": "ci_validate.py - validazione manifest/CHANGELOG/docs usata dalla CI",
+            "ja": "ci_validate.py —— CI が使用する manifest/CHANGELOG/docs の検証",
+            "zh": "ci_validate.py——CI 使用的 manifest/CHANGELOG/docs 校验",
+            "pt": "ci_validate.py - validação de manifesto/CHANGELOG/docs usada pelo CI"
+          }
+        },
+        {
+          "name": ".github/",
+          "desc": {
+            "en": "CI workflow and issue templates",
+            "es": "flujo de CI y plantillas de incidencias",
+            "de": "CI-Workflow und Issue-Vorlagen",
+            "fr": "workflow de CI et modèles de tickets",
+            "it": "workflow di CI e modelli di segnalazione",
+            "ja": "CI ワークフローと Issue テンプレート",
+            "zh": "CI 工作流和 Issue 模板",
+            "pt": "fluxo de CI e modelos de problemas"
+          }
+        }
+      ]
+    },
+    {
+      "name": {
+        "en": "project files",
+        "es": "ficheros del proyecto",
+        "de": "Projektdateien",
+        "fr": "fichiers du projet",
+        "it": "file del progetto",
+        "ja": "プロジェクトのファイル",
+        "zh": "项目文件",
+        "pt": "ficheiros do projeto"
+      },
+      "kind": "group",
+      "span": 3,
+      "accent": "c",
+      "columns": 2,
+      "rows": [
+        {
+          "name": "CHANGELOG.md",
+          "desc": {
+            "en": "what changed in each version",
+            "es": "qué cambió en cada versión",
+            "de": "was sich in jeder Version geändert hat",
+            "fr": "ce qui a changé à chaque version",
+            "it": "cosa è cambiato in ogni versione",
+            "ja": "各バージョンの変更点",
+            "zh": "每个版本的变更",
+            "pt": "o que mudou em cada versão"
+          }
+        },
+        {
+          "name": "Dockerfile",
+          "desc": {
+            "en": "container image",
+            "es": "imagen de contenedor",
+            "de": "Container-Image",
+            "fr": "image de conteneur",
+            "it": "immagine del container",
+            "ja": "コンテナイメージ",
+            "zh": "容器镜像",
+            "pt": "imagem de contentor"
+          }
+        },
+        {
+          "name": "build-test.sh",
+          "desc": {
+            "en": "non-mutating build check",
+            "es": "comprobación de compilación sin cambios",
+            "de": "Build-Prüfung ohne Änderungen",
+            "fr": "vérification de build sans modification",
+            "it": "controllo di build senza modifiche",
+            "ja": "変更を伴わないビルド確認",
+            "zh": "不修改内容的构建检查",
+            "pt": "verificação de compilação sem alterações"
+          }
+        },
+        {
+          "name": "build.sh",
+          "desc": {
+            "en": "builds and checks; never changes the version",
+            "es": "compila y comprueba; nunca cambia la versión",
+            "de": "baut und prüft; ändert nie die Version",
+            "fr": "construit et vérifie ; ne change jamais la version",
+            "it": "compila e controlla; non cambia mai la versione",
+            "ja": "ビルドと検査。バージョンは変更しない",
+            "zh": "构建并检查；从不改变版本",
+            "pt": "compila e verifica; nunca muda a versão"
+          }
+        },
+        {
+          "name": "bump_manifest_version.py",
+          "desc": {
+            "en": "syncs the manifest version",
+            "es": "sincroniza la versión del manifiesto",
+            "de": "gleicht die Manifest-Version an",
+            "fr": "synchronise la version du manifeste",
+            "it": "sincronizza la versione del manifesto",
+            "ja": "マニフェストのバージョンを同期",
+            "zh": "同步清单版本",
+            "pt": "sincroniza a versão do manifesto"
+          }
+        },
+        {
+          "name": "dev.sh",
+          "desc": {
+            "en": "development mode",
+            "es": "modo de desarrollo",
+            "de": "Entwicklungsmodus",
+            "fr": "mode développement",
+            "it": "modalità di sviluppo",
+            "ja": "開発モード",
+            "zh": "开发模式",
+            "pt": "modo de desenvolvimento"
+          }
+        },
+        {
+          "name": "hydra-umc.project.json",
+          "desc": {
+            "en": "manifest: version, maturity, family",
+            "es": "manifiesto: versión, madurez, familia",
+            "de": "Manifest: Version, Reifegrad, Familie",
+            "fr": "manifeste : version, maturité, famille",
+            "it": "manifesto: versione, maturità, famiglia",
+            "ja": "マニフェスト：バージョン、成熟度、ファミリー",
+            "zh": "清单：版本、成熟度、系列",
+            "pt": "manifesto: versão, maturidade, família"
+          }
+        },
+        {
+          "name": "package.json",
+          "desc": {
+            "en": "package metadata and scripts",
+            "es": "metadatos y scripts del paquete",
+            "de": "Paketmetadaten und Skripte",
+            "fr": "métadonnées et scripts du paquet",
+            "it": "metadati e script del pacchetto",
+            "ja": "パッケージのメタデータとスクリプト",
+            "zh": "包的元数据和脚本",
+            "pt": "metadados e scripts do pacote"
+          }
+        },
+        {
+          "name": "test.sh",
+          "desc": {
+            "en": "runs the tests",
+            "es": "ejecuta las pruebas",
+            "de": "führt die Tests aus",
+            "fr": "lance les tests",
+            "it": "esegue i test",
+            "ja": "テストを実行",
+            "zh": "运行测试",
+            "pt": "executa os testes"
+          }
+        }
+      ]
+    }
+  ]
+}

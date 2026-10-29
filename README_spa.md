@@ -1,3 +1,9 @@
+<!-- =============================================================================
+HYDRA-UMC-MQTT-BROKER - MQTT broker for telemetry and integrations
+Copyright (C) JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+GPL-3.0-or-later - see LICENSE
+============================================================================= -->
+
 <p align="center">
   <img src="images/HYDRA_UMC_BANNER.svg" alt="HYDRA-UMC-MQTT-BROKER banner" width="100%">
 </p>
@@ -9,9 +15,12 @@
 ### 🚀 Puente de Telemetría Ligero para IoT e Integraciones Externas
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Licencia-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
-  <img src="https://img.shields.io/badge/Protocolo-MQTT%203.1.1-orange.svg" alt="MQTT">
-  <img src="https://img.shields.io/badge/Función-Telemetría%20Pub%20%2F%20Sub-blue.svg" alt="PubSub">
+  <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
+  <img src="https://img.shields.io/badge/Protocol-MQTT%203.1.1-orange.svg" alt="Protocol">
+  <img src="https://img.shields.io/badge/Feature-Pub%20%2F%20Sub%20Telemetry-blue.svg" alt="Feature">
+  <img src="https://img.shields.io/badge/Tests-159%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Version-0.1.7-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
@@ -22,16 +31,20 @@
 
 > **Estado de seguridad física y de ciberseguridad:** este ecosistema no es un sistema de seguridad certificado. Todavía no existe una ruta de E-STOP por hardware, ni límites ni enclavamientos aplicados por el firmware, ni un comando de movimiento verificado; las imágenes de firmware se comprueban con CRC32 y un HMAC-SHA256 de clave compartida, no con una firma asimétrica; TLS y TLS mutuo son opcionales y están desactivados por defecto; aún no se ha poblado ni probado ninguna placa propia. Lee la [línea base de seguridad](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md) y el [modelo de amenazas](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md) antes de fiarte de cualquier afirmación de aquí para la seguridad de una persona.
 
+---
+
 ## 📋 De un vistazo
 
 | | |
 |---|---|
 | Versión | `0.1.7` |
 | Madurez | Funcional |
-| Tests | 155 |
+| Tests | 159 (`npm test`) |
 | Tecnología | Node.js / TypeScript / Aedes MQTT broker (MQTT 3.1.1) / MQTT over WebSockets (ws) / TLS and mutual TLS (optional) |
 | Destino | La Raspberry Pi CM5 de una celda HYDRA-UMC |
 | En hardware real | Todavía no: no consta ninguna ejecución en hardware real para esta versión |
+
+**Ir a:** [Resumen](#-resumen) · [Arquitectura](#-arquitectura) · [Inicio rápido](#-inicio-rápido) · [Pruebas](#-pruebas) · [Estructura del repositorio](#-estructura-del-repositorio) · [Proyectos relacionados](#-proyectos-relacionados)
 
 ## 🚦 Estado del proyecto
 
@@ -42,11 +55,11 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 | Área | Estado | Qué significa aquí |
 |---|---|---|
 | Software | 🟡 | Funciona para su propósito principal; la comprobación de honestidad de arriba lista lo que aún falta |
-| Pruebas | 🟢 | 155 pruebas automáticas, ejecutadas en cada cambio |
+| Pruebas | 🟢 | 159 pruebas automáticas, ejecutadas en cada cambio |
 | Hardware real | 🔴 | Todavía no: no consta ninguna ejecución en hardware real para esta versión |
 | Documentación | 🟢 | README en ocho idiomas, comprobado contra el manifiesto en cada cambio |
 
-## 1. 🛠️ VISIÓN GENERAL TÉCNICA
+## 🎯 Resumen
 
 **HYDRA-UMC-MQTT-BROKER** proporciona una interfaz de mensajería asíncrona y ligera para el ecosistema HYDRA-UMC. Permite que dispositivos IoT externos, dashboards y sistemas de automatización del hogar (como Home Assistant) se suscriban a la telemetría del robot y publiquen comandos.
 
@@ -67,9 +80,18 @@ Implementa el estándar MQTT 3.1.1 (vía Aedes, verificado en vivo - ver Arquite
 * 🧰 **Contraseñas con hash, identidad por certificado y límites para clientes lentos (todo opcional):** una contraseña de `MQTT_AUTH_JSON` puede guardarse como `scrypt$...` (se escribe con `npm run hash-password`; las contraseñas en claro siguen funcionando y el hash se calcula fuera del bucle de eventos); `MQTT_TLS_CERT_IDENTITY=1` (con TLS mutuo) identifica a un cliente por el CN de su certificado verificado, que debe ser prefijo de su ID de cliente, y aplica la ACL de ese nombre sin contraseña; `MQTT_CONNECT_TIMEOUT_MS`, `MQTT_KEEPALIVE_LIMIT_SECONDS` y `MQTT_QUEUE_LIMIT` acotan cuánto tiempo y con qué voracidad puede comportarse una conexión antes de cerrarla. Todo desactivado por defecto. *(implementado)*
 * 📊 **Métricas Prometheus:** Listener real y opcional de `GET /metrics` (opción `metricsPort` / variable `MQTT_METRICS_PORT`, puerto por defecto 9883) que informa de clientes conectados, mensajes recibidos, denegaciones de ACL y bytes de entrada/salida. *(implementado)*
 
----
+## 🧩 Papel en HYDRA-UMC
 
-## 2. 🔄 ESTRUCTURA DE TÓPICOS MQTT
+**HYDRA-UMC-MQTT-BROKER** es el centro de mensajes del ecosistema: un broker MQTT 3.1.1 (Aedes) con autenticación opcional por cliente y ACL de topics, entre paneles, sistemas domóticos, los bridges de máquinas (`HYDRA-UMC-BRIDGE-*`) y `HYDRA-UMC-SERVER`. Enruta mensajes; la decisión de seguridad queda en el receptor.
+
+## 🏛️ Arquitectura
+
+<p align="center">
+  <img src="images/architecture.svg" alt="HYDRA-UMC-MQTT-BROKER architecture" width="100%">
+</p>
+
+<details>
+<summary>Versión en texto del diagrama (Mermaid)</summary>
 
 ```mermaid
 flowchart TD
@@ -81,6 +103,10 @@ flowchart TD
     CMD --> HYDRA
 ```
 
+</details>
+
+### ESTRUCTURA DE TÓPICOS MQTT
+
 **Nota de honestidad:** el esquema de tema `hydra/swarm/...` de arriba
 ilustra la forma *prevista* una vez que el estado propio de
 HYDRA-UMC-SERVER se conecte a MQTT - esa conexión aún no está hecha
@@ -91,9 +117,7 @@ nombres `hydra/bridges/<name>/...` de los 5 puentes de máquina externos
 (ver `docs/BRIDGE_TOPICS.md`) y el propio esquema de temas VDA 5050 de
 HYDRA-UMC-BRIDGE-AMR.
 
----
-
-## 3. 🧱 ARQUITECTURA Y DECISIONES DE DISEÑO
+### ARQUITECTURA Y DECISIONES DE DISEÑO
 
 * **Por qué es hermano, no un submódulo, de HYDRA-UMC-GATEWAY-INDUSTRIAL.** Cada adaptador de protocolo es un proceso desplegable/reiniciable por separado - un problema en el broker nunca tumba los adaptadores de OPC-UA o MTConnect que corren junto a él.
 * **Por qué un broker MQTT real, en vez de solo un cliente publicando a uno externo.** Poseer el broker significa que el propio flujo de eventos de esta célula (cambios de estado de robot, alarmas) está disponible para cualquier suscriptor MQTT de la red de planta sin depender de que un broker externo, gestionado aparte, esté alcanzable.
@@ -105,28 +129,24 @@ HYDRA-UMC-BRIDGE-AMR.
 * **Por qué la configuración de la ACL/límite de payload vive en variables de entorno (`MQTT_ACL_JSON`/`MAX_PAYLOAD_BYTES`), no en un archivo de configuración.** Coincide con la convención existente de `PORT` en este proyecto (ver `.env.example`) y con cómo se despliega realmente (entorno systemd/Docker, no un archivo montado) - `parseAclConfig()` falla el arranque de forma ruidosa ante un JSON malformado en vez de ejecutarse en silencio sin protección.
 * **Por qué este broker habla MQTT 3.1.1, no MQTT v5.** `aedes@1.1.1` (la dependencia fijada) solo implementa MQTT 3.1/3.1.1 - verificado en vivo conectando un cliente `mqtt` real con `protocolVersion: 5`, que el broker rechaza activamente (`Connection refused: Unacceptable protocol version`), y confirmado contra la propia documentación upstream de Aedes (el soporte de MQTT 5.0 vive en una rama separada, no publicada). Todos los clientes de este ecosistema (los bridges `mqtt_transport.py`, `Vda5050Publisher`, los propios tests de este repo) ya negocian solo 3.1.1, así que esto es una corrección de documentación, no un cambio de comportamiento.
 
----
+## 🚀 Inicio rápido
 
-## 📂 ESTRUCTURA DE DIRECTORIOS
+Requiere Node.js 20 o superior con npm.
 
-```text
-HYDRA-UMC-MQTT-BROKER/
-├── src/         # Código fuente (Node/TypeScript - Broker, Puente, Seguridad)
-├── tests/       # Suite Vitest - ACL, autenticación y comportamiento de broker/puente
-├── docs/        # Documentación y catálogo de tópicos
-├── dist/        # Salida empaquetada (npm run build -> dist/server.cjs, gitignored)
-├── images/      # Medios y diagramas
-├── scripts/     # Scripts de utilidad (bump-version.mjs)
-├── tools/       # ci_validate.py - validación de manifest/CHANGELOG/docs usada por la CI
-└── README.md
+```bash
+npm install
+npm test
+npm run build
+npm start
 ```
 
-Servicio de red puro, sin hardware propio - `hardware/`, `firmware/` y
-`os/` se omiten según la política de estructura del repositorio.
+## 🧪 Pruebas
 
----
+159 pruebas automáticas se ejecutan con `npm test`. No necesitan hardware ni nada fuera de esta máquina.
 
-## 🛠️ ENTORNO DE DESARROLLO
+El CI ejecuta `HYDRA_UMC_CI=1 python tools/ci_validate.py`, que comprueba el manifiesto, los documentos, los ocho README y las imágenes.
+
+## 🏗️ Compilación y publicación
 
 ### Requisitos
 - [Node.js](https://nodejs.org/) (v18 o superior recomendado)
@@ -161,17 +181,51 @@ Assistant, MQTT Explorer, ...) a `<host>:1883`.
 acarreo a minor (y de minor a major) al pasar de 9 en vez de llegar nunca
 a un segmento de dos dígitos (`0.0.9` -> `0.1.0`, no `0.0.10`).
 
----
+## 📂 Estructura del repositorio
 
-## 🚀 HOJA DE RUTA
+<p align="center">
+  <img src="images/repository-structure.svg" alt="Repository structure of HYDRA-UMC-MQTT-BROKER" width="100%">
+</p>
+
+<details>
+<summary>Versión en texto del árbol</summary>
+
+```text
+HYDRA-UMC-MQTT-BROKER/
+├── src/                       Código fuente (Node/TypeScript - Broker, Puente, Seguridad)
+├── tests/                     Suite Vitest - ACL, autenticación y comportamiento de broker/puente
+├── docs/                      Documentación y catálogo de tópicos
+├── images/                    Medios y diagramas
+├── scripts/                   Scripts de utilidad (bump-version.mjs)
+├── tools/                     ci_validate.py - validación de manifest/CHANGELOG/docs usada por la CI
+├── .github/                   flujo de CI y plantillas de incidencias
+├── CHANGELOG.md               qué cambió en cada versión
+├── Dockerfile                 imagen de contenedor
+├── build-test.sh              comprobación de compilación sin cambios
+├── build.sh                   compila y comprueba; nunca cambia la versión
+├── bump_manifest_version.py   sincroniza la versión del manifiesto
+├── dev.sh                     modo de desarrollo
+├── hydra-umc.project.json     manifiesto: versión, madurez, familia
+├── package.json               metadatos y scripts del paquete
+└── test.sh                    ejecuta las pruebas
+```
+
+</details>
+
+## 🗺️ Hoja de ruta y límites conocidos
+
+**Límites conocidos hoy**
+
 * **Fase 1:** Implementación de OPC-UA Pub/Sub para intercambio de datos de alta velocidad y puente de protocolos heredados.
 * **Fase 2:** Clúster de Broker MQTT para gestión masiva de dispositivos IoT y alta concurrencia.
 * **Fase 3:** Soporte del adaptador MTConnect para integración de maquinaria CNC y PLC multi-vendedor.
 * **Fase 4:** Soporte para la especificación Sparkplug B para alineación con IoT industrial y puente de telemetría unificado.
 
----
+## 🌍 Idiomas
 
-## 🔗 Proyectos Relacionados
+Este README y los documentos del repositorio existen en ocho idiomas: inglés, español, alemán, francés, italiano, japonés, chino y portugués (Portugal). Se escriben a la vez y el CI comprueba que los ocho ficheros tengan las mismas secciones y los mismos enlaces. Este repositorio no tiene pantalla ni catálogo de mensajes propios, así que no hay cadenas de interfaz que traducir.
+
+## 🔗 Proyectos relacionados
 
 Este proyecto es parte del ecosistema de robótica HYDRA-UMC del mismo autor (JuanenRac / Electro Hobby 3D). Vale la pena conocerlo, ya que una petición podría en realidad ser sobre alguno de estos en vez de sobre este repositorio.
 
@@ -262,22 +316,27 @@ Este proyecto es parte del ecosistema de robótica HYDRA-UMC del mismo autor (Ju
 - **[HYDRA-UMC-OPS-AGENT](https://github.com/JuanenRac/HYDRA-UMC-OPS-AGENT)** — coordinador de incidencias de mantenimiento: un rol edge de bajo privilegio recopila un snapshot de inventario/salud saneado, un rol control-plane lo renderiza de solo lectura y pide a un proveedor de IA que sugiera un diagnóstico - nunca aplica un parche ni despliega nada.
 - **[HYDRA-UMC-DEV-SERVER](https://github.com/JuanenRac/HYDRA-UMC-DEV-SERVER)** — host de desarrollo reproducible (Raspberry Pi 5 / CM5) que almacena el código del ecosistema y ejecuta tareas acotadas de compilación/pruebas bajo una cola duradera; un rol de desarrollo dedicado, explícitamente distinto de un CM5 operativo.
 
+## 📚 Documentación
 
----
+Dónde leer más:
 
-## 📚 Documentación y Comunidad
+* **[docs/BRIDGE_TOPICS.md](docs/BRIDGE_TOPICS.md)** — el catálogo real y compartido de temas `hydra/bridges/<name>/...` que usa de verdad cada puente de máquina externo (CNC/Laser/OpenPnP/Printer3D/ROS2) contra este broker.
+* [Base de seguridad del ecosistema](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
+* [Modelo de amenazas del ecosistema](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
+* [Historial de cambios de este repositorio](CHANGELOG.md)
+* [Licencia de este repositorio](LICENSE.md)
 
-- **[docs/BRIDGE_TOPICS.md](docs/BRIDGE_TOPICS.md)** — el catálogo real y compartido de temas `hydra/bridges/<name>/...` que usa de verdad cada puente de máquina externo (CNC/Laser/OpenPnP/Printer3D/ROS2) contra este broker.
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** — stack tecnológico y pautas de codificación para un pull request.
-- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** — los estándares de comportamiento esperados en esta comunidad.
-- **[SECURITY.md](SECURITY.md)** — cómo reportar una vulnerabilidad, y las áreas reales de enfoque en seguridad de este proyecto.
-- **[SUPPORT.md](SUPPORT.md)** — dónde hacer preguntas y reportar errores.
-- **[LICENSE.md](LICENSE.md)** — la licencia propia de este proyecto.
+## 🤝 Contribuir y comunidad
+
+* Antes de un pull request ejecuta `HYDRA_UMC_CI=1 py -3 tools/ci_validate.py` (o `HYDRA_UMC_CI=1 python3 tools/ci_validate.py`): debe imprimir `CI_VALIDATION=PASS`. No ejecutes `build.sh` ni `build.bat` para esta comprobación; compilar no es comprobar.
+* Los ocho README se escriben desde una sola fuente en HYDRA-UMC-DOCS; no los edites a mano. Cambia la fuente y vuelve a escribirlos con `tools/make_readmes.py`.
+* No afirmes en un README lo que no se ha ejecutado: di «simulado» o «sin probar en hardware» cuando esa sea la verdad.
+* Mira [CONTRIBUTING.md](CONTRIBUTING.md), el [código de conducta](CODE_OF_CONDUCT.md), [SECURITY.md](SECURITY.md) y [SUPPORT.md](SUPPORT.md).
 
 ## 👤 AUTOR
-**JuanenRac** (Electro Hobby 3D)
-📧 electrohobby3d@gmail.com
-📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
+
+**JuanenRac (Electro Hobby 3D)** · electrohobby3d@gmail.com
 
 ## 📜 LICENCIA
-GPL-3.0-or-later - Ver archivo LICENSE para más detalles.
+
+GPL-3.0-or-later - [LICENSE](LICENSE).

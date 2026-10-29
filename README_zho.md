@@ -1,3 +1,9 @@
+<!-- =============================================================================
+HYDRA-UMC-MQTT-BROKER - MQTT broker for telemetry and integrations
+Copyright (C) JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+GPL-3.0-or-later - see LICENSE
+============================================================================= -->
+
 <p align="center">
   <img src="images/HYDRA_UMC_BANNER.svg" alt="HYDRA-UMC-MQTT-BROKER banner" width="100%">
 </p>
@@ -9,9 +15,12 @@
 ### 🚀 面向 IoT 和外部集成的轻量级遥测桥接
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Licencia-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
-  <img src="https://img.shields.io/badge/Protocol-MQTT%203.1.1-orange.svg" alt="MQTT">
-  <img src="https://img.shields.io/badge/Feature-Pub%20%2F%20Sub%20Telemetry-blue.svg" alt="PubSub">
+  <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
+  <img src="https://img.shields.io/badge/Protocol-MQTT%203.1.1-orange.svg" alt="Protocol">
+  <img src="https://img.shields.io/badge/Feature-Pub%20%2F%20Sub%20Telemetry-blue.svg" alt="Feature">
+  <img src="https://img.shields.io/badge/Tests-159%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Version-0.1.7-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
@@ -22,16 +31,20 @@
 
 > **安全与安防现状:**本生态系统不是经认证的安全系统。目前尚无硬件 E-STOP 通路,没有由固件强制执行的限位或联锁,也没有经过验证的运动指令;固件映像使用 CRC32 和共享密钥的 HMAC-SHA256 校验,而非非对称签名;TLS 与双向 TLS 均为可选项,默认关闭;自制电路板尚未组装或测试。在依赖此处任何说法来保障人身安全之前,请先阅读[安全基线](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)和[威胁模型](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)。
 
+---
+
 ## 📋 速览
 
 | | |
 |---|---|
 | 版本 | `0.1.7` |
 | 成熟度 | 可用 |
-| 测试 | 155 |
+| 测试 | 159 (`npm test`) |
 | 技术栈 | Node.js / TypeScript / Aedes MQTT broker (MQTT 3.1.1) / MQTT over WebSockets (ws) / TLS and mutual TLS (optional) |
 | 目标 | HYDRA-UMC 工作单元的 Raspberry Pi CM5 |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
+
+**跳转：** [概述](#-概述) · [架构](#-架构) · [快速开始](#-快速开始) · [测试](#-测试) · [仓库结构](#-仓库结构) · [相关项目](#-相关项目)
 
 ## 🚦 项目状态
 
@@ -42,11 +55,11 @@
 | 领域 | 状态 | 在这里的含义 |
 |---|---|---|
 | 软件 | 🟡 | 主要用途可用；上面的诚实性检查列出了仍然缺少的内容 |
-| 测试 | 🟢 | 155 项自动测试，每次变更都会运行 |
+| 测试 | 🟢 | 159 项自动测试，每次变更都会运行 |
 | 真实硬件 | 🔴 | 尚未：此版本没有在真实硬件上运行的记录 |
 | 文档 | 🟢 | 八种语言的 README，每次变更都会与清单核对 |
 
-## 1. 🛠️ 技术概述
+## 🎯 概述
 
 **HYDRA-UMC-MQTT-BROKER** 为 HYDRA-UMC 生态系统提供了一个轻量级的异步
 消息传递接口。它使外部 IoT 设备、仪表盘和家庭自动化系统（如 Home
@@ -70,9 +83,18 @@ Assistant）能够订阅机器人遥测数据并发布指令。
 * 🔒 **TLS：** 真实、可选的 TLS 上的 MQTT（`MQTT_TLS_CERT` / `MQTT_TLS_KEY`，端口 8883，另可通过 `MQTT_WSS_PORT` 提供安全 WebSocket）以及可选的双向 TLS（`MQTT_TLS_CA` 配合 `MQTT_TLS_REQUIRE_CLIENT_CERT=1`）。*（已实现）*
 * 🧰 **哈希密码、证书身份与慢速客户端限制（均为可选）：** `MQTT_AUTH_JSON` 中的密码可以存为 `scrypt$...`（用 `npm run hash-password` 生成；明文密码仍然可用，哈希在事件循环之外计算）；`MQTT_TLS_CERT_IDENTITY=1`（配合双向 TLS）用已验证客户端证书的 CN 识别客户端（该 CN 必须是其客户端 ID 的前缀），并在无需密码的情况下应用该名称的 ACL；`MQTT_CONNECT_TIMEOUT_MS`、`MQTT_KEEPALIVE_LIMIT_SECONDS` 和 `MQTT_QUEUE_LIMIT` 限制连接在被关闭前可以占用多长时间、多贪婪。全部默认关闭。 *(已实现)*
 
----
+## 🧩 在 HYDRA-UMC 中的角色
 
-## 2. 🔄 MQTT 主题结构
+**HYDRA-UMC-MQTT-BROKER** 是生态系统的消息中心：一个 MQTT 3.1.1 代理（Aedes），支持可选的按客户端认证和主题 ACL，位于仪表板、家居自动化、机器桥接（`HYDRA-UMC-BRIDGE-*`）与 `HYDRA-UMC-SERVER` 之间。它只转发消息；安全决定仍在接收方。
+
+## 🏛️ 架构
+
+<p align="center">
+  <img src="images/architecture.svg" alt="HYDRA-UMC-MQTT-BROKER architecture" width="100%">
+</p>
+
+<details>
+<summary>图表的文本版本（Mermaid）</summary>
 
 ```mermaid
 flowchart TD
@@ -84,6 +106,10 @@ flowchart TD
     CMD --> HYDRA
 ```
 
+</details>
+
+### MQTT 主题结构
+
 **诚实说明：** 上面的 `hydra/swarm/...` 主题结构展示的是一旦
 HYDRA-UMC-SERVER 自身状态被接入 MQTT 之后*预期*的形态——这个接入目前
 还没有接通（`src/server.ts` 自己的头部注释写明："lands once that
@@ -92,9 +118,7 @@ wiring is defined"），所以今天没有任何东西发布到 `hydra/swarm/...
 `hydra/bridges/<name>/...` 命名空间（见 `docs/BRIDGE_TOPICS.md`），
 以及 HYDRA-UMC-BRIDGE-AMR 自己的 VDA 5050 主题结构。
 
----
-
-## 3. 🧱 架构与设计决策
+### 架构与设计决策
 
 * **为何这是 HYDRA-UMC-GATEWAY-INDUSTRIAL 的兄弟项目，而非子模块。** 每个协议适配器都是可独立部署/重启的进程——一次 Broker 问题永远不会导致与其并行运行的 OPC-UA 或 MTConnect 适配器宕机。
 * **为何是一个真实的 MQTT Broker，而非仅仅是向外部 Broker 发布消息的客户端。** 拥有该 Broker 意味着该单元自身的事件流（机器人状态变化、告警）可供工厂网络上的任何 MQTT 订阅者使用，而无需依赖某个独立的、外部管理的 Broker 是否可达。
@@ -106,28 +130,24 @@ wiring is defined"），所以今天没有任何东西发布到 `hydra/swarm/...
 * **为何 ACL/载荷限制的配置存放在环境变量（`MQTT_ACL_JSON`/`MAX_PAYLOAD_BYTES`）中，而非配置文件里。** 这与本项目现有的 `PORT` 约定保持一致（参见 `.env.example`），也符合其实际部署方式（systemd/Docker 环境，而非挂载文件）——`parseAclConfig()` 在遇到格式错误的 JSON 时会大声地使启动失败，而不是悄悄地在无保护状态下运行。
 * **为何这个 broker 说的是 MQTT 3.1.1，而不是 MQTT v5。** `aedes@1.1.1`（锁定的依赖版本）只实现了 MQTT 3.1/3.1.1——通过实测验证：用真实的 `mqtt` 客户端以 `protocolVersion: 5` 连接时，broker 会主动拒绝（`Connection refused: Unacceptable protocol version`），这也与 Aedes 自身的上游文档一致（MQTT 5.0 支持存在于一个尚未发布的独立分支上）。本生态系统中的每一个客户端（`mqtt_transport.py` 系列桥接、`Vda5050Publisher`、本仓库自己的测试）本来就只协商 3.1.1，因此这只是一次文档修正，而非行为变更。
 
----
+## 🚀 快速开始
 
-## 📂 目录结构
+需要 Node.js 20 或更高版本及 npm。
 
-```text
-HYDRA-UMC-MQTT-BROKER/
-├── src/         # 源代码（Node/TypeScript —— Broker、桥接、安全）
-├── tests/       # Vitest 测试套件——ACL、认证与 broker/桥接行为
-├── docs/        # 文档与主题目录
-├── dist/        # 打包输出（npm run build -> dist/server.cjs，已 gitignore）
-├── images/      # 媒体与图表
-├── scripts/     # 实用脚本（bump-version.mjs）
-├── tools/       # ci_validate.py——CI 使用的 manifest/CHANGELOG/docs 校验
-└── README.md
+```bash
+npm install
+npm test
+npm run build
+npm start
 ```
 
-纯网络服务，没有自己专属的硬件——`hardware/`、`firmware/` 和 `os/`
-已根据仓库结构策略从项目模板中省略。
+## 🧪 测试
 
----
+运行 `npm test` 会执行 159 个自动测试。 不需要硬件，也不需要这台机器以外的任何东西。
 
-## 🛠️ 开发环境
+CI 运行 `HYDRA_UMC_CI=1 python tools/ci_validate.py`，检查清单、文档、八个 README 和图片。
+
+## 🏗️ 构建与发布
 
 ### 前提条件
 - [Node.js](https://nodejs.org/)（建议 v18 或更高版本）
@@ -159,19 +179,53 @@ Broker 监听 `0.0.0.0:1883`（纯 MQTT/TCP，IANA 注册的默认端口）—�
 
 ### 版本管理
 `npm run build` 只负责打包服务器，绝不会更改版本；`python tools/hydra_project_tool.py bump` 才会提升它（通过 `bump_manifest_version.py`）
-——一种十进制"里程表"方案：每次 bump patch +1，超过 9 时进位到 minor
+
 （minor 超过 9 时进位到 major），而不会到达两位数段（`0.0.9` ->
 `0.1.0`，而非 `0.0.10`）。
 
----
+## 📂 仓库结构
 
-## 🚀 路线图
+<p align="center">
+  <img src="images/repository-structure.svg" alt="Repository structure of HYDRA-UMC-MQTT-BROKER" width="100%">
+</p>
+
+<details>
+<summary>目录树的文本版本</summary>
+
+```text
+HYDRA-UMC-MQTT-BROKER/
+├── src/                       源代码（Node/TypeScript —— Broker、桥接、安全）
+├── tests/                     Vitest 测试套件——ACL、认证与 broker/桥接行为
+├── docs/                      文档与主题目录
+├── images/                    媒体与图表
+├── scripts/                   实用脚本（bump-version.mjs）
+├── tools/                     ci_validate.py——CI 使用的 manifest/CHANGELOG/docs 校验
+├── .github/                   CI 工作流和 Issue 模板
+├── CHANGELOG.md               每个版本的变更
+├── Dockerfile                 容器镜像
+├── build-test.sh              不修改内容的构建检查
+├── build.sh                   构建并检查；从不改变版本
+├── bump_manifest_version.py   同步清单版本
+├── dev.sh                     开发模式
+├── hydra-umc.project.json     清单：版本、成熟度、系列
+├── package.json               包的元数据和脚本
+└── test.sh                    运行测试
+```
+
+</details>
+
+## 🗺️ 路线图与已知限制
+
+**当前已知限制**
+
 * **第一阶段：** OPC-UA 发布/订阅实现，用于高速数据交换和传统协议桥接。
 * **第二阶段：** 用于海量 IoT 设备管理和高并发的 MQTT Broker 集群。
 * **第三阶段：** MTConnect 适配器支持，用于多厂商 CNC 和 PLC 机械集成。
 * **第四阶段：** 支持 Sparkplug B 规范，以实现工业 IoT 对齐和统一遥测桥接。
 
----
+## 🌍 语言
+
+本 README 和仓库文档提供八种语言：英语、西班牙语、德语、法语、意大利语、日语、中文和葡萄牙语（葡萄牙）。它们同时编写，并由 CI 检查八个文件拥有相同的章节和相同的链接。 本仓库没有自己的界面或消息目录，因此没有需要翻译的界面文字。
 
 ## 🔗 相关项目
 
@@ -264,22 +318,27 @@ Broker 监听 `0.0.0.0:1883`（纯 MQTT/TCP，IANA 注册的默认端口）—�
 - **[HYDRA-UMC-OPS-AGENT](https://github.com/JuanenRac/HYDRA-UMC-OPS-AGENT)** — 维护事件协调器：一个低权限的边缘角色采集经过脱敏的库存/健康快照，一个控制面角色以只读方式渲染它，并请求某个 AI 提供方给出诊断建议——从不应用补丁，也从不部署任何内容。
 - **[HYDRA-UMC-DEV-SERVER](https://github.com/JuanenRac/HYDRA-UMC-DEV-SERVER)** — 可复现的开发主机（Raspberry Pi 5 / CM5），保存整个生态系统的源代码，并在持久队列下运行有界的构建/测试任务；这是专用的开发角色，明确区别于运行中的 CM5。
 
+## 📚 文档
 
----
+更多阅读：
 
-## 📚 文档与社区
+* **[docs/BRIDGE_TOPICS.md](docs/BRIDGE_TOPICS.md)** —— 每个外部机器桥接（CNC/Laser/OpenPnP/Printer3D/ROS2）针对本 broker 实际使用的、真实共享的 `hydra/bridges/<name>/...` 主题目录。
+* [生态系统的安全基线](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
+* [生态系统的威胁模型](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
+* [本仓库的更新日志](CHANGELOG.md)
+* [本仓库的许可证](LICENSE.md)
 
-- **[docs/BRIDGE_TOPICS.md](docs/BRIDGE_TOPICS.md)** —— 每个外部机器桥接（CNC/Laser/OpenPnP/Printer3D/ROS2）针对本 broker 实际使用的、真实共享的 `hydra/bridges/<name>/...` 主题目录。
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** —— 提交 Pull Request 所需的技术栈和编码规范。
-- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** —— 本社区所期望的行为准则。
-- **[SECURITY.md](SECURITY.md)** —— 如何报告漏洞，以及本项目真实的安全关注重点。
-- **[SUPPORT.md](SUPPORT.md)** —— 在哪里提问和报告缺陷。
-- **[LICENSE.md](LICENSE.md)** —— 本项目自身的许可证。
+## 🤝 参与贡献与社区
+
+* 提交 pull request 之前，请运行 `HYDRA_UMC_CI=1 py -3 tools/ci_validate.py`（或 `HYDRA_UMC_CI=1 python3 tools/ci_validate.py`）：它必须输出 `CI_VALIDATION=PASS`。此检查不要运行 `build.sh` 或 `build.bat`；构建不是检查。
+* 八个 README 由 HYDRA-UMC-DOCS 中的同一个源生成；请勿手工编辑。修改源文件，再用 `tools/make_readmes.py` 重新生成。
+* 不要在 README 中声称尚未运行过的内容：属实时请写“仅模拟”或“尚未在硬件上试过”。
+* 请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)、[行为准则](CODE_OF_CONDUCT.md)、[SECURITY.md](SECURITY.md) 和 [SUPPORT.md](SUPPORT.md)。
 
 ## 👤 作者
-**JuanenRac** (Electro Hobby 3D)
-📧 electrohobby3d@gmail.com
-📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
+
+**JuanenRac (Electro Hobby 3D)** · electrohobby3d@gmail.com
 
 ## 📜 许可证
-GPL-3.0-or-later —— 详见 LICENSE。
+
+GPL-3.0-or-later - [LICENSE](LICENSE).

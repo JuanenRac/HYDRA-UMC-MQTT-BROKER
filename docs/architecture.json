@@ -1,0 +1,138 @@
+{
+  "repo": "HYDRA-UMC-MQTT-BROKER",
+  "ecosystem": "hydra",
+  "tagline": "An Aedes broker with optional authentication and topic ACLs, between the bridges and everyone else.",
+  "description": "HYDRA-UMC-MQTT-BROKER accepts MQTT clients on port 1883, authenticates them when a credential file is configured, filters topics with ACLs and exposes metrics.",
+  "columns": [
+    "WHO CONNECTS",
+    "THIS REPOSITORY",
+    "WHAT IT NEEDS"
+  ],
+  "nodes": [
+    {
+      "id": "br",
+      "column": 0,
+      "level": "external",
+      "title": "Machine bridges",
+      "lines": [
+        "BRIDGE-CNC, -LASER, ...",
+        "publish status, get jobs"
+      ]
+    },
+    {
+      "id": "ext",
+      "column": 0,
+      "level": "external",
+      "title": "Dashboards and IoT",
+      "lines": [
+        "Home Assistant, MQTT",
+        "Explorer, mobile apps"
+      ]
+    },
+    {
+      "id": "cfg",
+      "column": 2,
+      "level": "config",
+      "title": "Credential file",
+      "lines": [
+        "optional; without it the",
+        "broker is open"
+      ]
+    },
+    {
+      "id": "srv",
+      "column": 1,
+      "level": "tested",
+      "title": "server.ts",
+      "lines": [
+        "Aedes broker on port 1883,",
+        "limits and metrics"
+      ],
+      "code": [
+        "src/server.ts",
+        "src/metrics.ts"
+      ]
+    },
+    {
+      "id": "auth",
+      "column": 1,
+      "level": "tested",
+      "title": "auth.ts",
+      "lines": [
+        "per-client credentials,",
+        "client-ID prefix binding"
+      ],
+      "code": [
+        "src/auth.ts",
+        "src/hash-password.ts"
+      ]
+    },
+    {
+      "id": "acl",
+      "column": 1,
+      "level": "tested",
+      "title": "acl.ts",
+      "lines": [
+        "topic ACLs: who may",
+        "publish or subscribe"
+      ],
+      "code": [
+        "src/acl.ts"
+      ]
+    },
+    {
+      "id": "sec",
+      "column": 1,
+      "level": "tested",
+      "title": "security.ts",
+      "lines": [
+        "what a production start",
+        "requires: credentials, ACL"
+      ],
+      "code": [
+        "src/security.ts"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "br",
+      "to": "srv",
+      "level": "tested",
+      "label": "MQTT"
+    },
+    {
+      "from": "ext",
+      "to": "srv",
+      "level": "tested",
+      "label": "MQTT"
+    },
+    {
+      "from": "srv",
+      "to": "auth",
+      "level": "tested"
+    },
+    {
+      "from": "srv",
+      "to": "acl",
+      "level": "tested"
+    },
+    {
+      "from": "sec",
+      "to": "acl",
+      "level": "tested"
+    },
+    {
+      "from": "sec",
+      "to": "auth",
+      "level": "tested"
+    },
+    {
+      "from": "auth",
+      "to": "cfg",
+      "level": "config",
+      "label": "reads"
+    }
+  ],
+  "footer": "Tried with real MQTT clients on a computer, not on the CM5."
+}
