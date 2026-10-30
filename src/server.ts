@@ -36,12 +36,16 @@ import {
 } from "./auth.js";
 import { DEFAULT_PRODUCTION_RETAINED_TTL_MS, isProduction, openStartWarnings, productionProblems, transportProblems, transportWarnings } from "./security.js";
 import { MetricsRegistry } from "./metrics.js";
+import { resolveServicePort } from "./portConfig.js";
 
 // 1883 is the IANA-registered plain-MQTT port (8883 is the TLS variant) -
 // kept as the default here so any off-the-shelf MQTT client (mosquitto_sub,
 // Home Assistant, MQTT Explorer, ...) can point at this broker with zero
 // configuration during local development.
-const DEFAULT_PORT = Number(process.env.PORT) || 1883;
+// HYDRA_UMC_BROKER_PORT is the variable of this service; the shared PORT still works, with a warning.
+const RESOLVED_PORT = resolveServicePort(process.env, "HYDRA_UMC_BROKER_PORT", 1883);
+if (RESOLVED_PORT.warning) console.warn(`[HYDRA-UMC-MQTT-BROKER] ${RESOLVED_PORT.warning}`);
+const DEFAULT_PORT = RESOLVED_PORT.port;
 
 // 8083 is the de facto convention for plain (non-TLS) MQTT-over-WebSocket
 // among real brokers (e.g. EMQX's own default) - picked so a browser-based
