@@ -18,14 +18,14 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Protocol-MQTT%203.1.1-orange.svg" alt="Protocol">
   <img src="https://img.shields.io/badge/Feature-Pub%20%2F%20Sub%20Telemetry-blue.svg" alt="Feature">
-  <img src="https://img.shields.io/badge/Tests-159%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-163%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.1.7-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
-**正直な現状確認 - 今日実際に動くもの:** ブローカーのトランスポート層(`src/server.ts`)、トピック ACL(`src/acl.ts`)、そして CONNECT 認証(`src/auth.ts`)は本物であり、テスト済みである(12 ファイルにわたり 159 件のテストが成功)。`tsc --noEmit` もクリーンである。これらはモック化された内部実装に対する分離された単体テストではない——`tests/server.test.ts` は本物の TCP ソケットを介して本物の `mqtt` クライアントライブラリを、実際に稼働している本物の Aedes ブローカーに接続しており、まさにこの方法で実際のバグ(Aedes 1.x の `broker.listen()` ステップが省略され、すべての CONNECT が静かにハングしていた問題)が実際に発見された。MQTT over WebSocket リスナーとペイロードサイズ制限も同様である: 本物で、オプトインであり、ブローカーレベルでテストされている。実際にまだ構築されていないもの: mDNS/Home Assistant ディスカバリーは計画段階にすぎない——`server.ts` は現在、いかなるディスカバリーサービスも持たない単純な TCP リスナーである——そして下記の図にある `hydra/swarm/...` というトピック形状は、HYDRA-UMC-SERVER 自身の状態が MQTT にブリッジされた後に想定される将来の形であり、それはまだ実現していない。今日実際に本物として実装され配線されているのは、5 つの外部マシンブリッジの `hydra/bridges/<name>/...` トピックのみである。これまでに何が実際に出荷されたかは `CHANGELOG.md` を参照。
+**正直な現状確認 - 今日実際に動くもの:** ブローカーのトランスポート層(`src/server.ts`)、トピック ACL(`src/acl.ts`)、そして CONNECT 認証(`src/auth.ts`)は本物であり、テスト済みである(12 ファイルにわたり 163 件のテストが成功)。`tsc --noEmit` もクリーンである。これらはモック化された内部実装に対する分離された単体テストではない——`tests/server.test.ts` は本物の TCP ソケットを介して本物の `mqtt` クライアントライブラリを、実際に稼働している本物の Aedes ブローカーに接続しており、まさにこの方法で実際のバグ(Aedes 1.x の `broker.listen()` ステップが省略され、すべての CONNECT が静かにハングしていた問題)が実際に発見された。MQTT over WebSocket リスナーとペイロードサイズ制限も同様である: 本物で、オプトインであり、ブローカーレベルでテストされている。実際にまだ構築されていないもの: mDNS/Home Assistant ディスカバリーは計画段階にすぎない——`server.ts` は現在、いかなるディスカバリーサービスも持たない単純な TCP リスナーである——そして下記の図にある `hydra/swarm/...` というトピック形状は、HYDRA-UMC-SERVER 自身の状態が MQTT にブリッジされた後に想定される将来の形であり、それはまだ実現していない。今日実際に本物として実装され配線されているのは、5 つの外部マシンブリッジの `hydra/bridges/<name>/...` トピックのみである。これまでに何が実際に出荷されたかは `CHANGELOG.md` を参照。
 
 ---
 
@@ -39,12 +39,12 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | バージョン | `0.1.7` |
 | 成熟度 | 機能する |
-| テスト | 159 (`npm test`) |
+| テスト | 163 (`npm test`) |
 | 技術 | Node.js / TypeScript / Aedes MQTT broker (MQTT 3.1.1) / MQTT over WebSockets (ws) / TLS and mutual TLS (optional) |
 | 対象 | HYDRA-UMC セルの Raspberry Pi CM5 |
 | 実機での確認 | まだです：このバージョンについて実機での動作記録はありません |
 
-**移動：** [概要](#-概要) · [アーキテクチャ](#-アーキテクチャ) · [クイックスタート](#-クイックスタート) · [テスト](#-テスト) · [リポジトリの構成](#-リポジトリの構成) · [関連プロジェクト](#-関連プロジェクト)
+**移動：** [概要](#-概要) · [アーキテクチャ](#-アーキテクチャ) · [設定](#-設定) · [クイックスタート](#-クイックスタート) · [テスト](#-テスト) · [リポジトリの構成](#-リポジトリの構成) · [関連プロジェクト](#-関連プロジェクト)
 
 ## 🚦 プロジェクトの状況
 
@@ -55,7 +55,7 @@ GPL-3.0-or-later - see LICENSE
 | 領域 | 状態 | ここでの意味 |
 |---|---|---|
 | ソフトウェア | 🟡 | 主な目的では動作します。足りない点は上の正直さの確認に書かれています |
-| テスト | 🟢 | 自動テスト 159 件。変更のたびに実行されます |
+| テスト | 🟢 | 自動テスト 163 件。変更のたびに実行されます |
 | 実機 | 🔴 | まだです：このバージョンについて実機での動作記録はありません |
 | ドキュメント | 🟢 | 8 言語の README。変更のたびにマニフェストと照合されます |
 
@@ -133,6 +133,10 @@ HYDRA-UMC-SERVER 自身の状態が MQTT に接続された場合の*目標*の�
 * **ACL/ペイロード制限の設定が、設定ファイルではなく環境変数（`MQTT_ACL_JSON`/`MAX_PAYLOAD_BYTES`）にある理由。** これは本プロジェクトの既存の `PORT` の慣例（`.env.example` を参照）や、実際のデプロイ方法（マウントされたファイルではなく、systemd/Docker の環境変数）に一致しています——`parseAclConfig()` は、不正な形式の JSON に対して静かに無防備なまま起動するのではなく、起動時に大きな失敗として検出します。
 * **このブローカーが MQTT v5 ではなく MQTT 3.1.1 を話す理由。** `aedes@1.1.1`(固定された依存関係)は MQTT 3.1/3.1.1 のみを実装しています——実際に `protocolVersion: 5` を指定した本物の `mqtt` クライアントを接続して検証したところ、ブローカーは能動的にこれを拒否しました(`Connection refused: Unacceptable protocol version`)。これは Aedes 自身のアップストリームドキュメント(MQTT 5.0 サポートは未リリースの別ブランチにある)とも一致します。このエコシステムのすべてのクライアント(`mqtt_transport.py` 系ブリッジ、`Vda5050Publisher`、本リポジトリ自身のテスト)はすでに 3.1.1 でしかネゴシエートしていないため、これは動作変更ではなくドキュメントの修正です。
 
+## ⚙️ 設定
+
+待ち受けポートは、まず `HYDRA_UMC_BROKER_PORT` から読み取ります。共有の `PORT` は最後の手段として引き続き使え、警告を表示します。そのため、複数のサービスで共有する環境ファイルがブローカーを他のサービスのポートへうっかり置くことはありません。
+
 ## 🚀 クイックスタート
 
 Node.js 20 以上と npm が必要です。
@@ -146,7 +150,7 @@ npm start
 
 ## 🧪 テスト
 
-`npm test` で自動テスト 159 件を実行します。 ハードウェアも、このマシンの外にあるものも必要ありません。
+`npm test` で自動テスト 163 件を実行します。 ハードウェアも、このマシンの外にあるものも必要ありません。
 
 CI は `HYDRA_UMC_CI=1 python tools/ci_validate.py` を実行し、マニフェスト、文書、8 つの README、図を検査します。
 
