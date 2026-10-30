@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.1.8] - A variable of its own for the listen port, the availability topics in the bridge topic catalog and the universal README
+
 - **The listen port has a variable of its own:** `HYDRA_UMC_BROKER_PORT` wins over the shared `PORT`, which several services of one machine read (a shared environment file could put the broker on the port of the server without any error). `PORT` still works as a last resort and prints a warning.
 
 - **README in the universal layout:** the README and its seven translations follow the layout that the four families share (22 sections in a fixed order), with an architecture picture and a repository-structure picture drawn from `docs/architecture.json` and `docs/structure.json`; the CI validator checks both pictures and the file tree.
