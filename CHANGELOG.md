@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Dependencies with known vulnerabilities are updated:** the address library moves to its patched release inside the same major version; only the lock file changes.
 ## [0.1.8] - A variable of its own for the listen port, the availability topics in the bridge topic catalog and the universal README
 
 - **The listen port has a variable of its own:** `HYDRA_UMC_BROKER_PORT` wins over the shared `PORT`, which several services of one machine read (a shared environment file could put the broker on the port of the server without any error). `PORT` still works as a last resort and prints a warning.
