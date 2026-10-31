@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.1.9] - Dependencies with known vulnerabilities updated
+
 - **Dependencies with known vulnerabilities are updated:** the address library moves to its patched release inside the same major version; only the lock file changes.
 ## [0.1.8] - A variable of its own for the listen port, the availability topics in the bridge topic catalog and the universal README
 
