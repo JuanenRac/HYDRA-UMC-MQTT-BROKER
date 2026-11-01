@@ -18,14 +18,14 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Protocol-MQTT%203.1.1-orange.svg" alt="Protocol">
   <img src="https://img.shields.io/badge/Feature-Pub%20%2F%20Sub%20Telemetry-blue.svg" alt="Feature">
-  <img src="https://img.shields.io/badge/Tests-163%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-173%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.1.9-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
-**诚实核查 - 今天真正能运行的部分：** broker 传输层(`src/server.ts`)、主题 ACL(`src/acl.ts`)以及 CONNECT 认证(`src/auth.ts`)都是真实的并经过测试(12 个文件共 163 个测试通过），并且 `tsc --noEmit` 检查干净。这些并非针对模拟内部结构的孤立单元测试——`tests/server.test.ts` 通过一个真实的 TCP 套接字，用真实的 `mqtt` 客户端库连接到一个真实运行中的 Aedes broker，一个真实的缺陷正是这样被发现的(Aedes 1.x 的 `broker.listen()` 步骤被跳过，导致每一次 CONNECT 都静默挂起)。MQTT-over-WebSocket 监听器和负载大小限制也是同样的情况：真实、可选，并且经过 broker 级别的测试。真正尚未构建的部分：mDNS/Home Assistant 发现功能仅处于计划阶段——`server.ts` 目前只是一个纯 TCP 监听器，没有任何发现服务；下方图中的 `hydra/swarm/...` 主题结构是未来的预期形态，要等到 HYDRA-UMC-SERVER 自身的状态被桥接到 MQTT 之后才会出现，而这尚未发生；今天真正实现并接好线的，只有 5 个外部机器桥接的 `hydra/bridges/<name>/...` 主题。具体已交付的内容请见 `CHANGELOG.md`。
+**诚实核查 - 今天真正能运行的部分：** broker 传输层(`src/server.ts`)、主题 ACL(`src/acl.ts`)以及 CONNECT 认证(`src/auth.ts`)都是真实的并经过测试(12 个文件共 173 个测试通过），并且 `tsc --noEmit` 检查干净。这些并非针对模拟内部结构的孤立单元测试——`tests/server.test.ts` 通过一个真实的 TCP 套接字，用真实的 `mqtt` 客户端库连接到一个真实运行中的 Aedes broker，一个真实的缺陷正是这样被发现的(Aedes 1.x 的 `broker.listen()` 步骤被跳过，导致每一次 CONNECT 都静默挂起)。MQTT-over-WebSocket 监听器和负载大小限制也是同样的情况：真实、可选，并且经过 broker 级别的测试。真正尚未构建的部分：mDNS/Home Assistant 发现功能仅处于计划阶段——`server.ts` 目前只是一个纯 TCP 监听器，没有任何发现服务；下方图中的 `hydra/swarm/...` 主题结构是未来的预期形态，要等到 HYDRA-UMC-SERVER 自身的状态被桥接到 MQTT 之后才会出现，而这尚未发生；今天真正实现并接好线的，只有 5 个外部机器桥接的 `hydra/bridges/<name>/...` 主题。具体已交付的内容请见 `CHANGELOG.md`。
 
 ---
 
@@ -39,7 +39,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | 版本 | `0.1.9` |
 | 成熟度 | 可用 |
-| 测试 | 163 (`npm test`) |
+| 测试 | 173 (`npm test`) |
 | 技术栈 | Node.js / TypeScript / Aedes MQTT broker (MQTT 3.1.1) / MQTT over WebSockets (ws) / TLS and mutual TLS (optional) |
 | 目标 | HYDRA-UMC 工作单元的 Raspberry Pi CM5 |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
@@ -55,7 +55,7 @@ GPL-3.0-or-later - see LICENSE
 | 领域 | 状态 | 在这里的含义 |
 |---|---|---|
 | 软件 | 🟡 | 主要用途可用；上面的诚实性检查列出了仍然缺少的内容 |
-| 测试 | 🟢 | 163 项自动测试，每次变更都会运行 |
+| 测试 | 🟢 | 173 项自动测试，每次变更都会运行 |
 | 真实硬件 | 🔴 | 尚未：此版本没有在真实硬件上运行的记录 |
 | 文档 | 🟢 | 八种语言的 README，每次变更都会与清单核对 |
 
@@ -78,6 +78,7 @@ Assistant）能够订阅机器人遥测数据并发布指令。
 * ⚡ **WebSocket 支持：** 面向浏览器端客户端的 MQTT over WebSocket——同一个 broker 实例上真实存在、可选启用的第二个监听器，与现有的纯 TCP 监听器并存(`wsPort` 选项 / `MQTT_WS_PORT` 环境变量，默认端口 8083)。*（已实现）*
 * ⏳ **保留消息过期：** 面向保留(retained)消息的真实、可选 TTL(`retainedTtlMs` 选项 / `MQTT_RETAINED_TTL_MS` 环境变量)——超过该期限的保留状态会被主动清除，而不是永远发送给此后的每一个订阅者。*（已实现）*
 * 🛡️ **生产策略：** 生产环境启动（Dockerfile 设置的 `NODE_ENV=production`）在以下情况会拒绝运行：没有 `MQTT_AUTH_JSON` 和 `MQTT_ACL_JSON`、密码少于 16 个字符或为示例值、没有覆盖每个凭据前缀的 ACL 规则；`MQTT_ALLOW_ANONYMOUS=1` 表示有意运行开放的实验室代理。ACL 按凭据所证明的身份（其自身的 `clientIdPrefix`）而不是客户端自选的客户端 ID 来评估；除非 `MQTT_RETAINED_TTL_MS` 另有设置，保留消息 24 小时后过期；`MQTT_BIND_HOST` / `MQTT_METRICS_HOST` 选择监听器绑定的网卡。*（已实现）*
+* 🔏 **签名命令信封（可选）：** 设置 `MQTT_REQUIRE_COMMAND_ENVELOPE=yes` 后，代理会拒绝发往 `hydra/bridges/<name>/cmd/job` 的 PUBLISH：保留的、不是 JSON 的、未签名的（缺少 `issued_at_ms`、`expires_in_ms` 或 64 位 `signature`）、已过期的、签发时间在未来的或有效期过长的，因此它们永远到不了桥接器；签名本身由持有密钥的桥接器校验。默认关闭。 *（已实现）*
 * 🔐 **非回环地址必须使用 TLS：** 当明文 MQTT 监听器对本机以外开放（默认绑定所有接口）且未配置 TLS 时，生产环境启动会拒绝运行；可用 `MQTT_BIND_HOST` 绑定到 `127.0.0.1`、配置 TLS，或用 `MQTT_ALLOW_PLAINTEXT=1` 有意接受受信任的网络。每次启动都会对不在回环地址上的明文监听器发出警告。*(已实现)*
 * 📊 **Prometheus 指标：** 真实、可选的 `GET /metrics` 监听器(`metricsPort` 选项 / `MQTT_METRICS_PORT` 环境变量，默认端口 9883)，以标准 Prometheus 文本格式报告已连接客户端数、收到的消息总数，以及总的进/出字节数。*（已实现）*
 * 🔒 **TLS：** 真实、可选的 TLS 上的 MQTT（`MQTT_TLS_CERT` / `MQTT_TLS_KEY`，端口 8883，另可通过 `MQTT_WSS_PORT` 提供安全 WebSocket）以及可选的双向 TLS（`MQTT_TLS_CA` 配合 `MQTT_TLS_REQUIRE_CLIENT_CERT=1`）。*（已实现）*
@@ -147,7 +148,7 @@ npm start
 
 ## 🧪 测试
 
-运行 `npm test` 会执行 163 个自动测试。 不需要硬件，也不需要这台机器以外的任何东西。
+运行 `npm test` 会执行 173 个自动测试。 不需要硬件，也不需要这台机器以外的任何东西。
 
 CI 运行 `HYDRA_UMC_CI=1 python tools/ci_validate.py`，检查清单、文档、八个 README 和图片。
 

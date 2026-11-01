@@ -36,6 +36,7 @@ import {
 } from "./auth.js";
 import { DEFAULT_PRODUCTION_RETAINED_TTL_MS, isProduction, openStartWarnings, productionProblems, transportProblems, transportWarnings } from "./security.js";
 import { MetricsRegistry } from "./metrics.js";
+import { type CommandEnvelopeOptions, commandEnvelopeProblem, validateCommandEnvelopeOptions } from "./commands.js";
 import { resolveServicePort } from "./portConfig.js";
 
 // 1883 is the IANA-registered plain-MQTT port (8883 is the TLS variant) -
@@ -87,6 +88,8 @@ export interface BuildBrokerOptions {
    * forever. Omitted (the default) means unlimited retained lifetime,
    * exactly as before this option existed. */
   retainedTtlMs?: number;
+  /** Opt-in: a PUBLISH to `hydra/bridges/<name>/cmd/job` must carry the envelope of a signed command (`issued_at_ms`, `expires_in_ms`, a 64-digit `signature`), must be current and must not be retained, or it is refused before any bridge sees it. The broker does not check the signature (the key is shared by the sender and the bridge only; the bridge does), it only stops what is unsigned, expired, future-dated, too long-lived or retained. Omitted (the default) leaves the command topics as they were; `{}` turns it on with the default limits. */
+  commandEnvelope?: CommandEnvelopeOptions;
   /** Opt-in MQTT-over-WebSocket listener, alongside the existing plain-TCP
    * one - this
    * README's own "Websockets Support" feature was listed as "planned -
@@ -260,6 +263,7 @@ export async function buildBroker(
   ) {
     throw new RangeError("retainedTtlMs must be a positive safe integer");
   }
+  if (options.commandEnvelope !== undefined) validateCommandEnvelopeOptions(options.commandEnvelope);
   for (const [name, value] of [
     ["connectTimeoutMs", options.connectTimeoutMs],
     ["keepaliveLimitSeconds", options.keepaliveLimitSeconds],
@@ -346,7 +350,7 @@ export async function buildBroker(
   // (allow everything) unless the caller explicitly provides `acl` and/or
   // `maxPayloadBytes`, so every pre-existing test/behavior against
   // buildBroker(port) with no options is untouched.
-  if (options.acl || options.maxPayloadBytes !== undefined) {
+  if (options.acl || options.maxPayloadBytes !== undefined || options.commandEnvelope) {
     broker.authorizePublish = (client, packet, callback) => {
       if (options.maxPayloadBytes !== undefined) {
         const payloadLength = Buffer.isBuffer(packet.payload)
@@ -362,6 +366,14 @@ export async function buildBroker(
         if (!isPublishAllowed(options.acl, clientId, packet.topic)) {
           metrics.aclDenied();
           callback(new Error(`ACL: publish to '${packet.topic}' denied for client '${clientId || "(unknown)"}'`));
+          return;
+        }
+      }
+      if (options.commandEnvelope) {
+        const problem = commandEnvelopeProblem(packet.topic, packet.retain === true, packet.payload, Date.now(), options.commandEnvelope);
+        if (problem !== null) {
+          console.warn(`[HYDRA-UMC-MQTT-BROKER] command on '${packet.topic}' refused: ${problem}`);
+          callback(new Error(`command refused: ${problem}`));
           return;
         }
       }
@@ -691,6 +703,30 @@ function loadBrokerOptionsFromEnv(): BuildBrokerOptions {
       process.exit(1);
     }
     options[key] = value;
+  }
+
+  // Opt-in (off unless the variable says yes): the bridges' job commands must be signed, current and not retained. The key is not here; the bridges check the signature.
+  const requireEnvelope = (process.env.MQTT_REQUIRE_COMMAND_ENVELOPE ?? "").trim().toLowerCase();
+  if (requireEnvelope !== "" && !["0", "false", "no", "off", "1", "true", "yes", "on"].includes(requireEnvelope)) {
+    console.error(`[HYDRA-UMC-MQTT-BROKER] MQTT_REQUIRE_COMMAND_ENVELOPE must be yes or no, got: ${process.env.MQTT_REQUIRE_COMMAND_ENVELOPE}`);
+    process.exit(1);
+  }
+  if (["1", "true", "yes", "on"].includes(requireEnvelope)) {
+    const envelope: CommandEnvelopeOptions = {};
+    for (const [name, key] of [
+      ["MQTT_COMMAND_MAX_SKEW_MS", "maxClockSkewMs"],
+      ["MQTT_COMMAND_MAX_EXPIRES_MS", "maxExpiresInMs"],
+    ] as const) {
+      const raw = process.env[name];
+      if (!raw) continue;
+      const value = Number(raw);
+      if (!Number.isSafeInteger(value) || value < 0 || (key === "maxExpiresInMs" && value === 0)) {
+        console.error(`[HYDRA-UMC-MQTT-BROKER] ${name} must be a whole number of milliseconds, got: ${raw}`);
+        process.exit(1);
+      }
+      envelope[key] = value;
+    }
+    options.commandEnvelope = envelope;
   }
 
   if (process.env.MQTT_BIND_HOST) options.host = process.env.MQTT_BIND_HOST.trim();

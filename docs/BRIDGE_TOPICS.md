@@ -34,6 +34,15 @@ will, also QoS 1 and retained) which the broker publishes if the bridge
 dies. A dashboard should treat a `state` as stale when the bridge is
 `offline`.
 
+A bridge that has the health topic switched on (`HYDRA_UMC_<NAME>_BRIDGE_HEALTH=yes` in its own service) publishes its state on
+`hydra/bridges/<name>/health` instead: **retained**, QoS 1, in the shape of the SDK `HealthReport`
+(`READY` with the check `link` passing when it connects, the other states with the checks that explain them, and `FAULT` with `link`
+failing as the MQTT will if it disappears). An MQTT connection has one will, so such a bridge no longer maintains `availability`
+(it clears the retained message an earlier run left there). One subscription to `hydra/bridges/+/health` gives the state of every
+bridge. The ACL must let the bridge publish on its own health topic and let the server and the dashboard subscribe to
+`hydra/bridges/+/health`; a retained message on this topic is expired by `MQTT_RETAINED_TTL_MS` like any other, so a bridge
+that has the health topic on republishes it more often than the TTL.
+
 Nobody in this repository publishes the `cmd/` topics: a command comes
 from whichever client (a dashboard, an orchestrator, `mosquitto_pub`)
 the ACL lets publish there. A bridge never acts on a retained `cmd/`
@@ -50,6 +59,15 @@ publishes VDA 5050 topics (`<interface>/<major>/<manufacturer>/<serial>/
 order|instantActions`, outside `hydra/bridges/`), and the other two do not
 use MQTT commands. Give the AMR bridge's client id
 (`hydra-umc-bridge-amr`) an ACL entry for the VDA 5050 topics of its AGVs.
+
+### Signed, expiring job commands (opt-in)
+
+With `MQTT_REQUIRE_COMMAND_ENVELOPE=yes` (or the `commandEnvelope` option) the broker refuses a PUBLISH to `hydra/bridges/<name>/cmd/job`
+that is not JSON, that is retained, that lacks `issued_at_ms`, `expires_in_ms` or a `signature` of 64 lowercase hexadecimal digits, that has
+expired, that was issued in the future by more than `MQTT_COMMAND_MAX_SKEW_MS` (5000) or that asks to stay valid longer than
+`MQTT_COMMAND_MAX_EXPIRES_MS` (300000). The publisher's connection is closed, as for an ACL refusal. The broker does **not** verify the
+signature: the key is shared by the sender and the bridge only, and the bridge (the shared job intake of the SDK, with signed commands
+switched on in its own service) is the single place that checks it. Off by default, and then the command topics behave as before.
 
 ## The shared job gate: `cmd/job`
 

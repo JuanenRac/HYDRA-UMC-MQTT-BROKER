@@ -18,14 +18,14 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Protocol-MQTT%203.1.1-orange.svg" alt="Protocol">
   <img src="https://img.shields.io/badge/Feature-Pub%20%2F%20Sub%20Telemetry-blue.svg" alt="Feature">
-  <img src="https://img.shields.io/badge/Tests-163%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-173%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.1.9-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
-**Honesty check - what actually runs today:** the broker transport (`src/server.ts`), the topic ACL (`src/acl.ts`), and the CONNECT authentication (`src/auth.ts`) are real and tested (163 tests passing across 12 files), and `tsc --noEmit` is clean. These aren't isolated unit tests against mocked internals - `tests/server.test.ts` connects a real `mqtt` client library over a real TCP socket to a real running Aedes broker, and that's how a real bug (Aedes 1.x's `broker.listen()` step being skipped, silently hanging every CONNECT) was actually found. The MQTT-over-WebSocket listener and the payload-size limit are the same way: real, opt-in, and broker-tested. What is genuinely not built: mDNS/Home Assistant discovery is planned only - `server.ts` is a plain TCP listener with no discovery service of any kind - and the `hydra/swarm/...` topic shape in the diagram below is the intended future shape once HYDRA-UMC-SERVER's own state is bridged onto MQTT, which hasn't happened yet; only the 5 external machine bridges' `hydra/bridges/<name>/...` topics are real and wired today. See `CHANGELOG.md` for exactly what has shipped so far.
+**Honesty check - what actually runs today:** the broker transport (`src/server.ts`), the topic ACL (`src/acl.ts`), and the CONNECT authentication (`src/auth.ts`) are real and tested (173 tests passing across 12 files), and `tsc --noEmit` is clean. These aren't isolated unit tests against mocked internals - `tests/server.test.ts` connects a real `mqtt` client library over a real TCP socket to a real running Aedes broker, and that's how a real bug (Aedes 1.x's `broker.listen()` step being skipped, silently hanging every CONNECT) was actually found. The MQTT-over-WebSocket listener and the payload-size limit are the same way: real, opt-in, and broker-tested. What is genuinely not built: mDNS/Home Assistant discovery is planned only - `server.ts` is a plain TCP listener with no discovery service of any kind - and the `hydra/swarm/...` topic shape in the diagram below is the intended future shape once HYDRA-UMC-SERVER's own state is bridged onto MQTT, which hasn't happened yet; only the 5 external machine bridges' `hydra/bridges/<name>/...` topics are real and wired today. See `CHANGELOG.md` for exactly what has shipped so far.
 
 ---
 
@@ -39,7 +39,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Version | `0.1.9` |
 | Maturity | Functional |
-| Tests | 163 (`npm test`) |
+| Tests | 173 (`npm test`) |
 | Stack | Node.js / TypeScript / Aedes MQTT broker (MQTT 3.1.1) / MQTT over WebSockets (ws) / TLS and mutual TLS (optional) |
 | Target | The Raspberry Pi CM5 of a HYDRA-UMC cell |
 | On real hardware | Not yet: no run on real hardware is recorded for this version |
@@ -55,7 +55,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Area | State | What it means here |
 |---|---|---|
 | Software | 🟡 | Works for its main purpose; the honesty check above lists what is still missing |
-| Tests | 🟢 | 163 automated tests, run on every change |
+| Tests | 🟢 | 173 automated tests, run on every change |
 | Real hardware | 🔴 | Not yet: no run on real hardware is recorded for this version |
 | Documentation | 🟢 | README in eight languages, checked against the manifest on every change |
 
@@ -75,6 +75,7 @@ It implements the MQTT 3.1.1 standard (via Aedes, verified live - see Architectu
 * ⚡ **Websockets Support:** MQTT-over-WebSockets for browser-based clients - the same broker instance, a real opt-in second listener alongside the existing plain-TCP one (`wsPort` option / `MQTT_WS_PORT` env var, default port 8083). *(implemented)*
 * ⏳ **Retained Message Expiry:** A real, opt-in TTL for retained messages (`retainedTtlMs` option / `MQTT_RETAINED_TTL_MS` env var) - a retained state older than the limit is actively cleared instead of being handed to every future subscriber forever. *(implemented)*
 * 🛡️ **Production Policy:** A production start (`NODE_ENV=production`, which the Dockerfile sets) refuses to run without `MQTT_AUTH_JSON` and `MQTT_ACL_JSON`, with passwords of at least 16 characters that are not examples, and with an ACL rule that covers the prefix of every credential; `MQTT_ALLOW_ANONYMOUS=1` says on purpose that it is an open lab broker. The ACL is evaluated against the identity the credential proved (its own `clientIdPrefix`), not against the client ID the client chose; retained messages expire after 24 hours unless `MQTT_RETAINED_TTL_MS` says otherwise; `MQTT_BIND_HOST` / `MQTT_METRICS_HOST` pick the interface the listeners bind to. *(implemented)*
+* 🔏 **Signed Command Envelope (opt-in):** With `MQTT_REQUIRE_COMMAND_ENVELOPE=yes` the broker refuses a PUBLISH to `hydra/bridges/<name>/cmd/job` that is retained, not JSON, unsigned (no `issued_at_ms`, `expires_in_ms` or 64-digit `signature`), expired, issued in the future or too long-lived, so it never reaches a bridge; the signature itself is checked by the bridge, which holds the key. Off by default. *(implemented)*
 * 🔐 **TLS away from loopback:** a production start refuses to run when the plain MQTT listener is open beyond this machine (the default bind is every interface) and TLS is not configured; bind to `127.0.0.1` with `MQTT_BIND_HOST`, configure TLS, or accept a trusted network on purpose with `MQTT_ALLOW_PLAINTEXT=1`. Every start warns about a plain listener that is not on loopback. *(implemented)*
 * 📊 **Prometheus Metrics:** Real, opt-in `GET /metrics` listener (`metricsPort` option / `MQTT_METRICS_PORT` env var, default port 9883) reporting connected clients, total messages received, and total bytes in/out in standard Prometheus exposition format. *(implemented)*
 * 🔒 **TLS:** Real, opt-in MQTT over TLS (`MQTT_TLS_CERT` / `MQTT_TLS_KEY`, port 8883, plus secure WebSocket with `MQTT_WSS_PORT`) and optional mutual TLS (`MQTT_TLS_CA` with `MQTT_TLS_REQUIRE_CLIENT_CERT=1`). *(implemented)*
@@ -145,7 +146,7 @@ npm start
 
 ## 🧪 Testing
 
-163 automated tests run with `npm test`. They need no hardware and nothing outside this machine.
+173 automated tests run with `npm test`. They need no hardware and nothing outside this machine.
 
 The CI runs `HYDRA_UMC_CI=1 python tools/ci_validate.py`, which checks the manifest, the documents, the eight READMEs and the pictures.
 

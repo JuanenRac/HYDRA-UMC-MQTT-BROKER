@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **An opt-in filter on the job command topics:** `MQTT_REQUIRE_COMMAND_ENVELOPE=yes` (or the `commandEnvelope` option, with `MQTT_COMMAND_MAX_SKEW_MS` and `MQTT_COMMAND_MAX_EXPIRES_MS` for its limits) refuses a PUBLISH to `hydra/bridges/<name>/cmd/job` that is retained, not JSON, unsigned (no `issued_at_ms`, `expires_in_ms` or 64-digit `signature`), expired, issued in the future by more than the skew or too long-lived, so it never reaches a bridge. The broker does not check the signature (the bridge does); off by default, and a misspelt switch or limit stops the start. The topic catalog describes it and the retained `health` topic of the bridges.
+
 - **Development tools brought to their current major versions:** Vitest 5, TypeScript 7 and Node.js 22 for the tests and the CI. The typecheck, the 163 tests and the bundle pass.
 
 ## [0.1.9] - Dependencies with known vulnerabilities updated
