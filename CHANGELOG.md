@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Development tools brought to their current major versions:** Vitest 5, TypeScript 7 and Node.js 22 for the tests and the CI. The typecheck, the 163 tests and the bundle pass.
+
 ## [0.1.9] - Dependencies with known vulnerabilities updated
 
 - **Dependencies with known vulnerabilities are updated:** the address library moves to its patched release inside the same major version; only the lock file changes.
