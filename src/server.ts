@@ -36,6 +36,7 @@ import {
 } from "./auth.js";
 import { DEFAULT_PRODUCTION_RETAINED_TTL_MS, isProduction, openStartWarnings, productionProblems, transportProblems, transportWarnings } from "./security.js";
 import { MetricsRegistry } from "./metrics.js";
+import { BridgeDiscovery, DiscoveryConfigError, loadBonjourPublisher, mdnsServices, parseDiscoveryEnv, startMdns } from "./discovery.js";
 import { type CommandEnvelopeOptions, commandEnvelopeProblem, validateCommandEnvelopeOptions } from "./commands.js";
 import { resolveServicePort } from "./portConfig.js";
 
@@ -128,6 +129,10 @@ export interface BuildBrokerOptions {
   host?: string;
   /** The address of the metrics listener. Omitted means the same as `host`. */
   metricsHost?: string;
+  /** Opt-in Home Assistant discovery of the machine bridges: the first time a bridge publishes on `hydra/bridges/<name>/health` the broker publishes, retained, the configs that make Home Assistant list it, under `discoveryPrefix`. Omitted (the default) publishes nothing of the kind. */
+  homeAssistant?: { discoveryPrefix: string };
+  /** Opt-in mDNS announcement (`_mqtt._tcp` and the listeners that exist), started by `main()` once the listeners are up. Omitted (the default) announces nothing. */
+  mdns?: { name: string };
   /** Milliseconds a new connection may wait before sending CONNECT; after that it is closed. Omitted keeps Aedes's own 30000. */
   connectTimeoutMs?: number;
   /** The largest keep-alive (seconds) a client may ask for; a client that asks for more, or for none, is refused. Omitted accepts any keep-alive, as before. */
@@ -476,6 +481,22 @@ export async function buildBroker(
     broker.on("closed", () => clearInterval(sweep));
   }
 
+  if (options.homeAssistant) {
+    const discovery = new BridgeDiscovery(options.homeAssistant.discoveryPrefix, (message) => {
+      broker.publish(
+        { cmd: "publish", topic: message.topic, payload: Buffer.from(message.payload, "utf8"), qos: 1, retain: true, dup: false },
+        (err?: Error) => {
+          if (err) console.error(`[HYDRA-UMC-MQTT-BROKER] Home Assistant config on '${message.topic}' failed: ${err.message}`);
+        },
+      );
+    });
+    broker.on("publish", (packet: AedesPublishPacket, client: Client | null) => {
+      if (client && discovery.onPublish(packet.topic, packet.payload)) {
+        console.log(`[HYDRA-UMC-MQTT-BROKER] announced '${packet.topic}' to Home Assistant`);
+      }
+    });
+  }
+
   // One WebSocket front for the plain and the TLS HTTP listeners.
   function attachWebSocket(httpServer: HttpServer): void {
     const wsSocketServer = new WebSocketServer({
@@ -729,6 +750,16 @@ function loadBrokerOptionsFromEnv(): BuildBrokerOptions {
     options.commandEnvelope = envelope;
   }
 
+  try {
+    const discovery = parseDiscoveryEnv(process.env);
+    if (discovery.homeAssistant) options.homeAssistant = { discoveryPrefix: discovery.discoveryPrefix };
+    if (discovery.mdns) options.mdns = { name: discovery.mdnsName };
+  } catch (error) {
+    if (!(error instanceof DiscoveryConfigError)) throw error;
+    console.error(`[HYDRA-UMC-MQTT-BROKER] ${error.message}`);
+    process.exit(1);
+  }
+
   if (process.env.MQTT_BIND_HOST) options.host = process.env.MQTT_BIND_HOST.trim();
   if (process.env.MQTT_METRICS_HOST) options.metricsHost = process.env.MQTT_METRICS_HOST.trim();
 
@@ -801,13 +832,41 @@ async function main() {
     });
   }
 
+  // Opt-in (MQTT_MDNS=1): announce the broker on the local network once the listeners are up. A network without multicast leaves the broker running.
+  let stopMdns: (() => Promise<void>) | undefined;
+  if (options.mdns) {
+    const mdnsOptions = options.mdns;
+    server.once("listening", () => {
+      loadBonjourPublisher().then(
+        (publisher) => {
+          const stop = startMdns(
+            publisher,
+            mdnsServices(mdnsOptions.name, {
+              port: DEFAULT_PORT,
+              tlsPort: options.tls ? (options.tlsPort ?? DEFAULT_TLS_PORT) : undefined,
+              wsPort: wsServer ? (options.wsPort === true ? DEFAULT_WS_PORT : options.wsPort) : undefined,
+              version: readPackageVersion(),
+              auth: (options.credentials?.length ?? 0) > 0,
+            }),
+            (message) => console.log(message),
+          );
+          stopMdns = async () => {
+            await stop();
+            publisher.destroy();
+          };
+        },
+        (error: Error) => console.error(`[HYDRA-UMC-MQTT-BROKER] mDNS is on but could not start (is bonjour-service installed?): ${error.message}`),
+      );
+    });
+  }
+
   // Aedes keeps its own client/subscription state in memory; on shutdown we
   // close both listeners first (stop accepting new clients on either
   // transport) then let Aedes tear down existing ones, mirroring the
   // graceful-shutdown shape used by HYDRA-UMC-SERVER's own src/server.ts.
   function shutdown() {
     console.log("[HYDRA-UMC-MQTT-BROKER] shutting down...");
-    void closeBroker(built).then(() => process.exit(0));
+    void (stopMdns ? stopMdns() : Promise.resolve()).then(() => closeBroker(built)).then(() => process.exit(0));
   }
 
   process.on("SIGINT", shutdown);

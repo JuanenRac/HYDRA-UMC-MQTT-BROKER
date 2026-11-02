@@ -25,7 +25,7 @@ GPL-3.0-or-later - see LICENSE
 
 ---
 
-**正直な現状確認 - 今日実際に動くもの:** ブローカーのトランスポート層(`src/server.ts`)、トピック ACL(`src/acl.ts`)、そして CONNECT 認証(`src/auth.ts`)は本物であり、テスト済みである(12 ファイルにわたり 173 件のテストが成功)。`tsc --noEmit` もクリーンである。これらはモック化された内部実装に対する分離された単体テストではない——`tests/server.test.ts` は本物の TCP ソケットを介して本物の `mqtt` クライアントライブラリを、実際に稼働している本物の Aedes ブローカーに接続しており、まさにこの方法で実際のバグ(Aedes 1.x の `broker.listen()` ステップが省略され、すべての CONNECT が静かにハングしていた問題)が実際に発見された。MQTT over WebSocket リスナーとペイロードサイズ制限も同様である: 本物で、オプトインであり、ブローカーレベルでテストされている。実際にまだ構築されていないもの: mDNS/Home Assistant ディスカバリーは計画段階にすぎない——`server.ts` は現在、いかなるディスカバリーサービスも持たない単純な TCP リスナーである——そして下記の図にある `hydra/swarm/...` というトピック形状は、HYDRA-UMC-SERVER 自身の状態が MQTT にブリッジされた後に想定される将来の形であり、それはまだ実現していない。今日実際に本物として実装され配線されているのは、5 つの外部マシンブリッジの `hydra/bridges/<name>/...` トピックのみである。これまでに何が実際に出荷されたかは `CHANGELOG.md` を参照。
+**正直な現状確認 - 今日実際に動くもの:** ブローカーのトランスポート層(`src/server.ts`)、トピック ACL(`src/acl.ts`)、そして CONNECT 認証(`src/auth.ts`)は本物であり、テスト済みである(12 ファイルにわたり 173 件のテストが成功)。`tsc --noEmit` もクリーンである。これらはモック化された内部実装に対する分離された単体テストではない——`tests/server.test.ts` は本物の TCP ソケットを介して本物の `mqtt` クライアントライブラリを、実際に稼働している本物の Aedes ブローカーに接続しており、まさにこの方法で実際のバグ(Aedes 1.x の `broker.listen()` ステップが省略され、すべての CONNECT が静かにハングしていた問題)が実際に発見された。MQTT over WebSocket リスナーとペイロードサイズ制限も同様である: 本物で、オプトインであり、ブローカーレベルでテストされている。`hydra/swarm/...` トピックは HYDRA-UMC-SERVER の MQTT ブリッジ（既定ではオフ。その `docs/MQTT_BRIDGE.md`）が、`hydra/bridges/<name>/...` トピックは 5 つの外部マシンブリッジが公開する。`tests/discovery-broker.test.ts` は提案する ACL のもとで swarm トピックを実際のブローカーに対して実行する。mDNS の告知とブリッジの Home Assistant 設定は実在するが、オプトインで既定ではオフである（`MQTT_MDNS=1`、`MQTT_HOME_ASSISTANT=1`）。これらは実際のブローカーとシミュレートしたネットワークで検証したもので、マルチキャストのある実ネットワークや実際の Home Assistant ではない。これまでに何が実際に出荷されたかは `CHANGELOG.md` を参照。
 
 ---
 
@@ -76,8 +76,8 @@ MQTT 3.1.1 標準を実装しており(Aedes 経由、実機で検証済み - �
 
 ### 主な機能：
 * 🔌 **外部マシンブリッジ:** `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/`-PRINTER3D`/`-ROS2` はそれぞれ、独自の `hydra/bridges/<name>/...` トピックを通じてこのブローカーに到達する —— `docs/BRIDGE_TOPICS.md` を参照。*(実装済み)*
-* 📡 **パブリッシュ/サブスクライブ テレメトリ：** 関節角度、工具状態、システムの健全性のサブミリ秒単位の配信。（計画中：ロボットの状態はまだブローカーを通っていません。現在は工作機械ブリッジの `hydra/bridges/<name>/...` トピックのみです）
-* 🛠️ **ディスカバリーサポート：** mDNS と Home Assistant 自動検出により、簡単にセットアップできます。*（計画中——まだ実装されていません。`src/server.ts` は現在ただの TCP リスナーであり、ディスカバリーサービスは一切ありません）*
+* 📡 **パブリッシュ/サブスクライブ テレメトリ：** 関節角度、工具状態、システムの健全性のサブミリ秒単位の配信。*(HYDRA-UMC-SERVER の MQTT ブリッジとして実装済み、既定ではオフ: ロボットの状態は `hydra/swarm/...` にあり、このブローカーはそれを運び ACL を適用する)*
+* 🛠️ **ディスカバリーサポート：** mDNS と Home Assistant 自動検出により、簡単にセットアップできます。**(実装済み、オプトインで既定ではオフ: `MQTT_MDNS=1` による mDNS 告知と `MQTT_HOME_ASSISTANT=1` によるブリッジの Home Assistant 設定。`docs/SWARM_AND_DISCOVERY.md` を参照)*
 * 🔐 **トピックセキュリティ：** 特定のロボットトピックの読み書きに対する、クライアント ID プレフィックスごとの実際に検証可能な ACL——ワイルドカードを使った SUBSCRIBE が、そのルールより広いアクセス権を得ることは決してありません。*(実装済み)*
 * 🪪 **クライアント認証：** 任意の MQTT CONNECT ユーザー名/パスワード認証（`MQTT_AUTH_JSON`）により、ACL に検証済みのセッション ID を提供します——各認証情報自身が要求する `clientIdPrefix` も強制されるため、有効だが権限の低い認証情報が、より高い権限を持つ別のクライアント ID を単純に選んでその ACL 権限を継承することはできません。*(実装済み。ACL と組み合わせて使用)*
 * 📏 **ペイロードサイズ制限：** PUBLISH のペイロードサイズに対する実際のオプトイン方式の上限で、`MAX_PAYLOAD_BYTES` で設定可能です。*(実装済み)*
@@ -117,15 +117,7 @@ flowchart TD
 
 ### MQTT トピック構造
 
-**正直な注記：** 上記の `hydra/swarm/...` というトピック形は、
-HYDRA-UMC-SERVER 自身の状態が MQTT に接続された場合の*目標*の形を
-示しているだけです——その配線はまだ行われていません
-（`src/server.ts` 自身のヘッダーコメントにその旨が書かれています：
-"lands once that wiring is defined"）。そのため、現在
-`hydra/swarm/...` に何かを publish するものはありません。今日実際に
-配線され本物であるトピックは、5 つの外部マシンブリッジ自身の
-`hydra/bridges/<name>/...` 名前空間（`docs/BRIDGE_TOPICS.md` を参照）
-と、HYDRA-UMC-BRIDGE-AMR 自身の VDA 5050 トピック形です。
+**注:** 上記の `hydra/swarm/...` トピックは HYDRA-UMC-SERVER の MQTT ブリッジ（既定ではオフ。その `docs/MQTT_BRIDGE.md` を参照）が公開し、このブローカーはそれを運び、ACL を適用する（`docs/SWARM_AND_DISCOVERY.md` に、実際のブローカーに対して検証を走らせる ACL がある）。今日ほかに実在し配線されているトピックは、5 つの外部マシンブリッジの `hydra/bridges/<name>/...` 名前空間（`docs/BRIDGE_TOPICS.md` を参照）と HYDRA-UMC-BRIDGE-AMR 独自の VDA 5050 トピック形状である。
 
 ### アーキテクチャと設計上の決定
 
@@ -337,6 +329,7 @@ HYDRA-UMC-MQTT-BROKER/
 さらに読むには：
 
 * **[docs/BRIDGE_TOPICS.md](docs/BRIDGE_TOPICS.md)** —— 各外部マシンブリッジ（CNC/Laser/OpenPnP/Printer3D/ROS2）がこのブローカーに対して実際に使用している、リアルで共有された `hydra/bridges/<name>/...` トピックカタログ。
+* **[docs/SWARM_AND_DISCOVERY.md](docs/SWARM_AND_DISCOVERY.md)** — 提案する ACL のもとでのサーバーの `hydra/swarm/...` トピック、mDNS の告知、Home Assistant によるブリッジの検出。
 * [エコシステムのセキュリティ基準](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
 * [エコシステムの脅威モデル](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
 * [このリポジトリの変更履歴](CHANGELOG.md)

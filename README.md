@@ -25,7 +25,7 @@ GPL-3.0-or-later - see LICENSE
 
 ---
 
-**Honesty check - what actually runs today:** the broker transport (`src/server.ts`), the topic ACL (`src/acl.ts`), and the CONNECT authentication (`src/auth.ts`) are real and tested (173 tests passing across 12 files), and `tsc --noEmit` is clean. These aren't isolated unit tests against mocked internals - `tests/server.test.ts` connects a real `mqtt` client library over a real TCP socket to a real running Aedes broker, and that's how a real bug (Aedes 1.x's `broker.listen()` step being skipped, silently hanging every CONNECT) was actually found. The MQTT-over-WebSocket listener and the payload-size limit are the same way: real, opt-in, and broker-tested. What is genuinely not built: mDNS/Home Assistant discovery is planned only - `server.ts` is a plain TCP listener with no discovery service of any kind - and the `hydra/swarm/...` topic shape in the diagram below is the intended future shape once HYDRA-UMC-SERVER's own state is bridged onto MQTT, which hasn't happened yet; only the 5 external machine bridges' `hydra/bridges/<name>/...` topics are real and wired today. See `CHANGELOG.md` for exactly what has shipped so far.
+**Honesty check - what actually runs today:** the broker transport (`src/server.ts`), the topic ACL (`src/acl.ts`), and the CONNECT authentication (`src/auth.ts`) are real and tested (173 tests passing across 12 files), and `tsc --noEmit` is clean. These aren't isolated unit tests against mocked internals - `tests/server.test.ts` connects a real `mqtt` client library over a real TCP socket to a real running Aedes broker, and that's how a real bug (Aedes 1.x's `broker.listen()` step being skipped, silently hanging every CONNECT) was actually found. The MQTT-over-WebSocket listener and the payload-size limit are the same way: real, opt-in, and broker-tested. The `hydra/swarm/...` topics are published by the MQTT bridge of HYDRA-UMC-SERVER (off by default; its `docs/MQTT_BRIDGE.md`) and the `hydra/bridges/<name>/...` topics by the 5 external machine bridges; `tests/discovery-broker.test.ts` runs the swarm topics under the proposed ACL against a real broker. The mDNS announcement and the Home Assistant configs of the bridges are real but opt-in and off by default (`MQTT_MDNS=1`, `MQTT_HOME_ASSISTANT=1`); they are checked with a real broker and a simulated network, not on a real network with multicast or a real Home Assistant. See `CHANGELOG.md` for exactly what has shipped so far.
 
 ---
 
@@ -72,8 +72,8 @@ It implements the MQTT 3.1.1 standard (via Aedes, verified live - see Architectu
 
 ### Key Features:
 * 🔌 **External Machine Bridges:** `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/`-PRINTER3D`/`-ROS2` each reach this broker over their own `hydra/bridges/<name>/...` topics - see `docs/BRIDGE_TOPICS.md`. *(implemented)*
-* 📡 **Pub/Sub Telemetry:** Sub-millisecond distribution of joint angles, tool states, and system health. *(planned - robot state is not on the broker yet; today only the machine bridges' `hydra/bridges/<name>/...` topics are)*
-* 🛠️ **Discovery Support:** mDNS and Home Assistant auto-discovery for easy setup. *(planned - not implemented yet; `src/server.ts` is a plain TCP listener today, no discovery service of any kind)*
+* 📡 **Pub/Sub Telemetry:** Sub-millisecond distribution of joint angles, tool states, and system health. *(implemented as the MQTT bridge of HYDRA-UMC-SERVER, off by default: the robots' state is on `hydra/swarm/...`; this broker carries it and enforces the ACL)*
+* 🛠️ **Discovery Support:** mDNS and Home Assistant auto-discovery for easy setup. *(implemented, opt-in and off by default: mDNS announcement with `MQTT_MDNS=1` and Home Assistant configs of the bridges with `MQTT_HOME_ASSISTANT=1`; see `docs/SWARM_AND_DISCOVERY.md`)*
 * 🔐 **Topic Security:** Real, verifiable per-client-ID-prefix ACL for reading and writing specific robot topics - a wildcard SUBSCRIBE can never grant broader access than its rule. *(implemented)*
 * 🪪 **Client Authentication:** Optional real MQTT username/password CONNECT authentication (`MQTT_AUTH_JSON`) gives the ACL a verified session identity - each credential's own required `clientIdPrefix` is enforced too, so a valid but lower-privilege credential cannot simply choose a different, more privileged client ID to inherit its ACL permissions. *(implemented; pair it with ACL)*
 * 📏 **Payload Size Limit:** A real, opt-in cap on PUBLISH payload size, configurable via `MAX_PAYLOAD_BYTES`. *(implemented)*
@@ -113,14 +113,7 @@ flowchart TD
 
 ### MQTT TOPIC STRUCTURE
 
-**Honesty note:** the `hydra/swarm/...` topic shape above illustrates the
-*intended* target shape once HYDRA-UMC-SERVER's own state is bridged onto
-MQTT - that bridging is not wired yet (`src/server.ts`'s own header
-comment: "lands once that wiring is defined"), so nothing publishes to
-`hydra/swarm/...` today. The topics that are real and wired today are the
-5 external machine bridges' `hydra/bridges/<name>/...` namespace (see
-`docs/BRIDGE_TOPICS.md`) and HYDRA-UMC-BRIDGE-AMR's own VDA 5050 topic
-shape.
+**Note:** the `hydra/swarm/...` topics above are published by the MQTT bridge of HYDRA-UMC-SERVER (off by default; see its `docs/MQTT_BRIDGE.md`), and this broker carries them and enforces the ACL on them (`docs/SWARM_AND_DISCOVERY.md` has the ACL that the checks run against a real broker). The other topics that are real and wired today are the 5 external machine bridges' `hydra/bridges/<name>/...` namespace (see `docs/BRIDGE_TOPICS.md`) and HYDRA-UMC-BRIDGE-AMR's own VDA 5050 topic shape.
 
 ### ARCHITECTURE & DESIGN DECISIONS
 
@@ -330,6 +323,7 @@ This project is part of the HYDRA-UMC robotics ecosystem by the same author (Jua
 Where to read more:
 
 * **[docs/BRIDGE_TOPICS.md](docs/BRIDGE_TOPICS.md)** — the real, shared `hydra/bridges/<name>/...` topic catalog every external machine bridge (CNC/Laser/OpenPnP/Printer3D/ROS2) actually uses against this broker.
+* **[docs/SWARM_AND_DISCOVERY.md](docs/SWARM_AND_DISCOVERY.md)** — the `hydra/swarm/...` topics of the server under a proposed ACL, the mDNS announcement and the Home Assistant discovery of the bridges.
 * [Security baseline of the ecosystem](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
 * [Threat model of the ecosystem](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
 * [Changelog of this repository](CHANGELOG.md)

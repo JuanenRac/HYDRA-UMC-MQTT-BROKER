@@ -4,6 +4,12 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The broker can announce itself with mDNS, off by default:** `MQTT_MDNS=1` announces `_mqtt._tcp` (and `_secure-mqtt._tcp` with TLS and `_mqtt-ws._tcp` with the WebSocket listener) once the listeners are up, with only the product, the version and whether TLS and sign-in are on in the text; `MQTT_MDNS_NAME` changes the name. A network without multicast leaves the broker running and the log says which service could not be announced, and the announcement is withdrawn on stop. Any switch other than `1` or `0` stops the start.
+
+- **Home Assistant finds the machine bridges, off by default:** `MQTT_HOME_ASSISTANT=1` makes the broker publish, once and retained, the configs of a connectivity sensor and a state sensor the first time a bridge publishes its health on `hydra/bridges/<name>/health` (at most 64 bridges; `MQTT_HOME_ASSISTANT_PREFIX` changes the discovery prefix). It is checked with a real broker and real clients.
+
+- **The `hydra/swarm/...` topics of the server are proven under an ACL and documented:** the MQTT bridge of HYDRA-UMC-SERVER publishes the state of the robots there and carries out commands; `docs/SWARM_AND_DISCOVERY.md` gives the ACL (the server publishes state, an operator account commands, a dashboard only reads) and a test runs it against a real broker. The README no longer says that the state of the robots is not on the broker.
+
 - **An opt-in filter on the job command topics:** `MQTT_REQUIRE_COMMAND_ENVELOPE=yes` (or the `commandEnvelope` option, with `MQTT_COMMAND_MAX_SKEW_MS` and `MQTT_COMMAND_MAX_EXPIRES_MS` for its limits) refuses a PUBLISH to `hydra/bridges/<name>/cmd/job` that is retained, not JSON, unsigned (no `issued_at_ms`, `expires_in_ms` or 64-digit `signature`), expired, issued in the future by more than the skew or too long-lived, so it never reaches a bridge. The broker does not check the signature (the bridge does); off by default, and a misspelt switch or limit stops the start. The topic catalog describes it and the retained `health` topic of the bridges.
 
 - **Development tools brought to their current major versions:** Vitest 5, TypeScript 7 and Node.js 22 for the tests and the CI. The typecheck, the 163 tests and the bundle pass.

@@ -25,7 +25,7 @@ GPL-3.0-or-later - see LICENSE
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** der Broker-Transport (`src/server.ts`), die Topic-ACL (`src/acl.ts`) und die CONNECT-Authentifizierung (`src/auth.ts`) sind real und getestet (173 bestandene Tests in 12 Dateien), und `tsc --noEmit` ist sauber. Das sind keine isolierten Unit-Tests gegen simulierte Interna - `tests/server.test.ts` verbindet eine echte `mqtt`-Client-Bibliothek über einen echten TCP-Socket mit einem echten laufenden Aedes-Broker, und genau so wurde ein echter Bug tatsächlich gefunden (der übersprungene `broker.listen()`-Schritt von Aedes 1.x, der jedes CONNECT stillschweigend hängen ließ). Der MQTT-über-WebSocket-Listener und die Payload-Größenbegrenzung funktionieren genauso: real, optional und broker-getestet. Was tatsächlich nicht gebaut ist: mDNS-/Home-Assistant-Discovery ist nur geplant - `server.ts` ist ein reiner TCP-Listener ohne jeglichen Discovery-Dienst - und die `hydra/swarm/...`-Topic-Form im Diagramm weiter unten ist die beabsichtigte zukünftige Form, sobald der eigene Zustand von HYDRA-UMC-SERVER an MQTT angebunden wird, was noch nicht geschehen ist; nur die `hydra/bridges/<name>/...`-Topics der 5 externen Maschinen-Bridges sind heute real und verdrahtet. Siehe `CHANGELOG.md` für das, was bisher genau ausgeliefert wurde.
+**Ehrlichkeitscheck - was heute wirklich läuft:** der Broker-Transport (`src/server.ts`), die Topic-ACL (`src/acl.ts`) und die CONNECT-Authentifizierung (`src/auth.ts`) sind real und getestet (173 bestandene Tests in 12 Dateien), und `tsc --noEmit` ist sauber. Das sind keine isolierten Unit-Tests gegen simulierte Interna - `tests/server.test.ts` verbindet eine echte `mqtt`-Client-Bibliothek über einen echten TCP-Socket mit einem echten laufenden Aedes-Broker, und genau so wurde ein echter Bug tatsächlich gefunden (der übersprungene `broker.listen()`-Schritt von Aedes 1.x, der jedes CONNECT stillschweigend hängen ließ). Der MQTT-über-WebSocket-Listener und die Payload-Größenbegrenzung funktionieren genauso: real, optional und broker-getestet. Die `hydra/swarm/...`-Topics veröffentlicht die MQTT-Bridge von HYDRA-UMC-SERVER (standardmäßig aus; ihr `docs/MQTT_BRIDGE.md`), die `hydra/bridges/<name>/...`-Topics die 5 externen Maschinen-Bridges; `tests/discovery-broker.test.ts` lässt die Swarm-Topics unter der vorgeschlagenen ACL gegen einen echten Broker laufen. Die mDNS-Ankündigung und die Home-Assistant-Konfigurationen der Bridges sind real, aber optional und standardmäßig aus (`MQTT_MDNS=1`, `MQTT_HOME_ASSISTANT=1`); sie werden mit einem echten Broker und einem simulierten Netz geprüft, nicht in einem echten Netz mit Multicast oder mit einem echten Home Assistant. Siehe `CHANGELOG.md` für das, was bisher genau ausgeliefert wurde.
 
 ---
 
@@ -72,8 +72,8 @@ Er implementiert den MQTT-3.1.1-Standard (via Aedes, live verifiziert - siehe Ar
 
 ### Hauptmerkmale:
 * 🔌 **Externe Maschinenbrücken:** `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/`-PRINTER3D`/`-ROS2` erreichen diesen Broker jeweils über ihre eigenen `hydra/bridges/<name>/...`-Topics - siehe `docs/BRIDGE_TOPICS.md`. *(implementiert)*
-* 📡 **Pub/Sub-Telemetrie:** Verteilung von Gelenkwinkeln, Werkzeugzuständen und Systemstatus in weniger als einer Millisekunde. *(geplant - der Roboterzustand läuft noch nicht über den Broker; heute nur die Topics `hydra/bridges/<name>/...` der Maschinen-Bridges)*
-* 🛠️ **Discovery-Unterstützung:** mDNS und Home Assistant Auto-Discovery für eine einfache Einrichtung. *(geplant - noch nicht implementiert; `src/server.ts` ist heute ein reiner TCP-Listener, ohne jeden Discovery-Dienst)*
+* 📡 **Pub/Sub-Telemetrie:** Verteilung von Gelenkwinkeln, Werkzeugzuständen und Systemstatus in weniger als einer Millisekunde. *(umgesetzt als MQTT-Bridge von HYDRA-UMC-SERVER, standardmäßig aus: der Zustand der Roboter liegt auf `hydra/swarm/...`; dieser Broker transportiert ihn und setzt die ACL durch)*
+* 🛠️ **Discovery-Unterstützung:** mDNS und Home Assistant Auto-Discovery für eine einfache Einrichtung. *(umgesetzt, optional und standardmäßig aus: mDNS-Ankündigung mit `MQTT_MDNS=1` und Home-Assistant-Konfigurationen der Bridges mit `MQTT_HOME_ASSISTANT=1`; siehe `docs/SWARM_AND_DISCOVERY.md`)*
 * 🔐 **Topic-Sicherheit:** Echte, verifizierbare ACL pro Client-ID-Präfix für das Lesen und Schreiben spezifischer Roboter-Topics - ein SUBSCRIBE mit Platzhalter kann nie einen breiteren Zugriff gewähren als seine Regel. *(implementiert)*
 * 🪪 **Client-Authentifizierung:** Optionale echte MQTT-Benutzername/Passwort-Authentifizierung beim CONNECT (`MQTT_AUTH_JSON`) gibt der ACL eine verifizierte Sitzungsidentität - der eigene erforderliche `clientIdPrefix` jedes Anmeldedatensatzes wird ebenfalls durchgesetzt, sodass ein gültiger, aber niedriger privilegierter Anmeldedatensatz nicht einfach eine andere, stärker privilegierte Client-ID wählen kann, um deren ACL-Rechte zu erben. *(implementiert; mit ACL kombinieren)*
 * 📏 **Payload-Größenbegrenzung:** Eine echte, optionale Obergrenze für die PUBLISH-Payload-Größe, konfigurierbar über `MAX_PAYLOAD_BYTES`. *(implementiert)*
@@ -113,15 +113,7 @@ flowchart TD
 
 ### MQTT-TOPIC-STRUKTUR
 
-**Ehrlichkeitshinweis:** die oben gezeigte `hydra/swarm/...`-Topic-Form
-illustriert die *angestrebte* Form, sobald der eigene Zustand von
-HYDRA-UMC-SERVER an MQTT angebunden wird - diese Anbindung ist noch
-nicht verdrahtet (der eigene Kopfkommentar von `src/server.ts` sagt es:
-"lands once that wiring is defined"), also veröffentlicht heute nichts
-unter `hydra/swarm/...`. Die Topics, die heute real und verdrahtet sind,
-sind der `hydra/bridges/<name>/...`-Namensraum der 5 externen
-Maschinenbrücken (siehe `docs/BRIDGE_TOPICS.md`) und die eigene
-VDA-5050-Topic-Form von HYDRA-UMC-BRIDGE-AMR.
+**Hinweis:** die oben gezeigten `hydra/swarm/...`-Topics veröffentlicht die MQTT-Bridge von HYDRA-UMC-SERVER (standardmäßig aus; siehe ihr `docs/MQTT_BRIDGE.md`); dieser Broker transportiert sie und setzt die ACL darauf durch (`docs/SWARM_AND_DISCOVERY.md` enthält die ACL, mit der die Prüfungen gegen einen echten Broker laufen). Die übrigen heute realen und verdrahteten Topics sind der `hydra/bridges/<name>/...`-Namensraum der 5 externen Maschinen-Bridges (siehe `docs/BRIDGE_TOPICS.md`) und die eigene VDA-5050-Topic-Form von HYDRA-UMC-BRIDGE-AMR.
 
 ### ARCHITEKTUR & DESIGNENTSCHEIDUNGEN
 
@@ -332,6 +324,7 @@ Dieses Projekt ist Teil des HYDRA-UMC-Robotik-Ökosystems desselben Autors (Juan
 Hier steht mehr:
 
 * **[docs/BRIDGE_TOPICS.md](docs/BRIDGE_TOPICS.md)** — der echte, geteilte `hydra/bridges/<name>/...`-Topic-Katalog, den jede externe Maschinenbrücke (CNC/Laser/OpenPnP/Printer3D/ROS2) tatsächlich gegen diesen Broker verwendet.
+* **[docs/SWARM_AND_DISCOVERY.md](docs/SWARM_AND_DISCOVERY.md)** — die `hydra/swarm/...`-Topics des Servers unter einer vorgeschlagenen ACL, die mDNS-Ankündigung und die Home-Assistant-Erkennung der Bridges.
 * [Sicherheitsgrundlage des Ökosystems](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
 * [Bedrohungsmodell des Ökosystems](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
 * [Änderungsprotokoll dieses Repositorys](CHANGELOG.md)

@@ -25,7 +25,7 @@ GPL-3.0-or-later - see LICENSE
 
 ---
 
-**诚实核查 - 今天真正能运行的部分：** broker 传输层(`src/server.ts`)、主题 ACL(`src/acl.ts`)以及 CONNECT 认证(`src/auth.ts`)都是真实的并经过测试(12 个文件共 173 个测试通过），并且 `tsc --noEmit` 检查干净。这些并非针对模拟内部结构的孤立单元测试——`tests/server.test.ts` 通过一个真实的 TCP 套接字，用真实的 `mqtt` 客户端库连接到一个真实运行中的 Aedes broker，一个真实的缺陷正是这样被发现的(Aedes 1.x 的 `broker.listen()` 步骤被跳过，导致每一次 CONNECT 都静默挂起)。MQTT-over-WebSocket 监听器和负载大小限制也是同样的情况：真实、可选，并且经过 broker 级别的测试。真正尚未构建的部分：mDNS/Home Assistant 发现功能仅处于计划阶段——`server.ts` 目前只是一个纯 TCP 监听器，没有任何发现服务；下方图中的 `hydra/swarm/...` 主题结构是未来的预期形态，要等到 HYDRA-UMC-SERVER 自身的状态被桥接到 MQTT 之后才会出现，而这尚未发生；今天真正实现并接好线的，只有 5 个外部机器桥接的 `hydra/bridges/<name>/...` 主题。具体已交付的内容请见 `CHANGELOG.md`。
+**诚实核查 - 今天真正能运行的部分：** broker 传输层(`src/server.ts`)、主题 ACL(`src/acl.ts`)以及 CONNECT 认证(`src/auth.ts`)都是真实的并经过测试(12 个文件共 173 个测试通过），并且 `tsc --noEmit` 检查干净。这些并非针对模拟内部结构的孤立单元测试——`tests/server.test.ts` 通过一个真实的 TCP 套接字，用真实的 `mqtt` 客户端库连接到一个真实运行中的 Aedes broker，一个真实的缺陷正是这样被发现的(Aedes 1.x 的 `broker.listen()` 步骤被跳过，导致每一次 CONNECT 都静默挂起)。MQTT-over-WebSocket 监听器和负载大小限制也是同样的情况：真实、可选，并且经过 broker 级别的测试。`hydra/swarm/...` 主题由 HYDRA-UMC-SERVER 的 MQTT 桥发布（默认关闭；见其 `docs/MQTT_BRIDGE.md`），`hydra/bridges/<name>/...` 主题由 5 个外部机器桥发布；`tests/discovery-broker.test.ts` 在建议的 ACL 下对真实 broker 运行 swarm 主题。mDNS 通告和各桥的 Home Assistant 配置是真实的，但需要手动开启且默认关闭（`MQTT_MDNS=1`、`MQTT_HOME_ASSISTANT=1`）；它们是用真实 broker 和模拟网络验证的，没有在带多播的真实网络或真实的 Home Assistant 上验证。具体已交付的内容请见 `CHANGELOG.md`。
 
 ---
 
@@ -75,8 +75,8 @@ Assistant）能够订阅机器人遥测数据并发布指令。
 
 ### 关键特性：
 * 🔌 **外部机器桥接:** `HYDRA-UMC-BRIDGE-CNC`/`-LASER`/`-OPENPNP`/`-PRINTER3D`/`-ROS2` 各自通过自己的 `hydra/bridges/<name>/...` 主题连接到本代理——参见 `docs/BRIDGE_TOPICS.md`。*(已实现)*
-* 📡 **发布/订阅遥测：** 关节角度、工具状态和系统健康状况的亚毫秒级分发。（计划中：机器人状态尚未经过代理；目前只有机床桥接器的 `hydra/bridges/<name>/...` 主题）
-* 🛠️ **发现支持：** mDNS 和 Home Assistant 自动发现，便于设置。*（计划中——尚未实现；`src/server.ts` 目前只是一个纯 TCP 监听器，没有任何发现服务）*
+* 📡 **发布/订阅遥测：** 关节角度、工具状态和系统健康状况的亚毫秒级分发。*(已作为 HYDRA-UMC-SERVER 的 MQTT 桥实现，默认关闭：机器人状态在 `hydra/swarm/...` 上；此 broker 负责传递并执行 ACL)*
+* 🛠️ **发现支持：** mDNS 和 Home Assistant 自动发现，便于设置。**(已实现，需手动开启且默认关闭：用 `MQTT_MDNS=1` 开启 mDNS 通告，用 `MQTT_HOME_ASSISTANT=1` 开启各桥的 Home Assistant 配置；见 `docs/SWARM_AND_DISCOVERY.md`)*
 * 🔐 **主题安全：** 真实、可验证的按客户端 ID 前缀划分的 ACL，用于读写特定的机器人主题——带通配符的 SUBSCRIBE 永远无法获得比其规则更宽的访问权限。*(已实现)*
 * 🪪 **客户端认证：** 可选的真实 MQTT CONNECT 用户名/密码认证（`MQTT_AUTH_JSON`）为 ACL 提供经过验证的会话身份——同时也会强制执行每个凭据自身要求的 `clientIdPrefix`,这样一个有效但权限较低的凭据就不能简单地选择另一个权限更高的客户端 ID 来继承其 ACL 权限。*(已实现；应与 ACL 配合使用)*
 * 📏 **载荷大小限制：** 对 PUBLISH 载荷大小的真实、可选的上限，可通过 `MAX_PAYLOAD_BYTES` 配置。*(已实现)*
@@ -116,13 +116,7 @@ flowchart TD
 
 ### MQTT 主题结构
 
-**诚实说明：** 上面的 `hydra/swarm/...` 主题结构展示的是一旦
-HYDRA-UMC-SERVER 自身状态被接入 MQTT 之后*预期*的形态——这个接入目前
-还没有接通（`src/server.ts` 自己的头部注释写明："lands once that
-wiring is defined"），所以今天没有任何东西发布到 `hydra/swarm/...`。
-今天真正接通、真实存在的主题是 5 个外部机器桥接自己的
-`hydra/bridges/<name>/...` 命名空间（见 `docs/BRIDGE_TOPICS.md`），
-以及 HYDRA-UMC-BRIDGE-AMR 自己的 VDA 5050 主题结构。
+**说明：** 上方的 `hydra/swarm/...` 主题由 HYDRA-UMC-SERVER 的 MQTT 桥发布（默认关闭；见其 `docs/MQTT_BRIDGE.md`），此 broker 负责传递并对其执行 ACL（`docs/SWARM_AND_DISCOVERY.md` 给出检查时对真实 broker 使用的 ACL）。今天另外真实且已接好线的主题，是 5 个外部机器桥的 `hydra/bridges/<name>/...` 命名空间（见 `docs/BRIDGE_TOPICS.md`）以及 HYDRA-UMC-BRIDGE-AMR 自己的 VDA 5050 主题结构。
 
 ### 架构与设计决策
 
@@ -333,6 +327,7 @@ HYDRA-UMC-MQTT-BROKER/
 更多阅读：
 
 * **[docs/BRIDGE_TOPICS.md](docs/BRIDGE_TOPICS.md)** —— 每个外部机器桥接（CNC/Laser/OpenPnP/Printer3D/ROS2）针对本 broker 实际使用的、真实共享的 `hydra/bridges/<name>/...` 主题目录。
+* **[docs/SWARM_AND_DISCOVERY.md](docs/SWARM_AND_DISCOVERY.md)** — 在建议的 ACL 下服务器的 `hydra/swarm/...` 主题、mDNS 通告，以及 Home Assistant 对各桥的发现。
 * [生态系统的安全基线](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
 * [生态系统的威胁模型](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
 * [本仓库的更新日志](CHANGELOG.md)
