@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.2.0] - Announcement of the broker on the local network, Home Assistant discovery for the bridges and a documented access list for the swarm topics
+
 - **The broker can announce itself with mDNS, off by default:** `MQTT_MDNS=1` announces `_mqtt._tcp` (and `_secure-mqtt._tcp` with TLS and `_mqtt-ws._tcp` with the WebSocket listener) once the listeners are up, with only the product, the version and whether TLS and sign-in are on in the text; `MQTT_MDNS_NAME` changes the name. A network without multicast leaves the broker running and the log says which service could not be announced, and the announcement is withdrawn on stop. Any switch other than `1` or `0` stops the start.
 
 - **Home Assistant finds the machine bridges, off by default:** `MQTT_HOME_ASSISTANT=1` makes the broker publish, once and retained, the configs of a connectivity sensor and a state sensor the first time a bridge publishes its health on `hydra/bridges/<name>/health` (at most 64 bridges; `MQTT_HOME_ASSISTANT_PREFIX` changes the discovery prefix). It is checked with a real broker and real clients.
