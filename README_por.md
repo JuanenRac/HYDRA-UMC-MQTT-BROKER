@@ -18,14 +18,14 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Protocol-MQTT%203.1.1-orange.svg" alt="Protocol">
   <img src="https://img.shields.io/badge/Feature-Pub%20%2F%20Sub%20Telemetry-blue.svg" alt="Feature">
-  <img src="https://img.shields.io/badge/Tests-173%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-187%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.0-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
-**Verificação de honestidade - o que realmente funciona hoje:** o transporte do broker (`src/server.ts`), a ACL de tópicos (`src/acl.ts`), a autenticação CONNECT (`src/auth.ts`) e a política de produção (`src/security.ts`) são reais e testados (173 testes a passar em 12 ficheiros, `tests/security.test.ts`, entre outros), e `tsc --noEmit` está limpo. Não são testes unitários isolados contra componentes internos simulados - o `tests/server.test.ts` liga um cliente `mqtt` real por um socket TCP real a um broker Aedes real em execução, e foi assim que se encontrou um erro real (o passo `broker.listen()` do Aedes 1.x ser ignorado, bloqueando em silêncio todos os CONNECT). O listener MQTT-sobre-WebSocket e o limite de tamanho de payload são iguais: reais, opcionais e testados com o broker. Os tópicos `hydra/swarm/...` são publicados pela ponte MQTT do HYDRA-UMC-SERVER (desativada por omissão; o seu `docs/MQTT_BRIDGE.md`) e os tópicos `hydra/bridges/<nome>/...` pelas 5 pontes de máquinas externas; `tests/discovery-broker.test.ts` executa os tópicos swarm com a ACL proposta contra um broker real. O anúncio mDNS e as configurações Home Assistant das pontes são reais mas opcionais e desativadas por omissão (`MQTT_MDNS=1`, `MQTT_HOME_ASSISTANT=1`); são verificadas com um broker real e uma rede simulada, não numa rede real com multicast nem com um Home Assistant real. Veja o `CHANGELOG.md` para saber exatamente o que já foi entregue.
+**Verificação de honestidade - o que realmente funciona hoje:** o transporte do broker (`src/server.ts`), a ACL de tópicos (`src/acl.ts`), a autenticação CONNECT (`src/auth.ts`) e a política de produção (`src/security.ts`) são reais e testados (187 testes a passar em 12 ficheiros, `tests/security.test.ts`, entre outros), e `tsc --noEmit` está limpo. Não são testes unitários isolados contra componentes internos simulados - o `tests/server.test.ts` liga um cliente `mqtt` real por um socket TCP real a um broker Aedes real em execução, e foi assim que se encontrou um erro real (o passo `broker.listen()` do Aedes 1.x ser ignorado, bloqueando em silêncio todos os CONNECT). O listener MQTT-sobre-WebSocket e o limite de tamanho de payload são iguais: reais, opcionais e testados com o broker. Os tópicos `hydra/swarm/...` são publicados pela ponte MQTT do HYDRA-UMC-SERVER (desativada por omissão; o seu `docs/MQTT_BRIDGE.md`) e os tópicos `hydra/bridges/<nome>/...` pelas 5 pontes de máquinas externas; `tests/discovery-broker.test.ts` executa os tópicos swarm com a ACL proposta contra um broker real. O anúncio mDNS e as configurações Home Assistant das pontes são reais mas opcionais e desativadas por omissão (`MQTT_MDNS=1`, `MQTT_HOME_ASSISTANT=1`); são verificadas com um broker real e uma rede simulada, não numa rede real com multicast nem com um Home Assistant real. Veja o `CHANGELOG.md` para saber exatamente o que já foi entregue.
 
 ---
 
@@ -39,7 +39,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Versão | `0.2.0` |
 | Maturidade | Funcional |
-| Testes | 173 (`npm test`) |
+| Testes | 187 (`npm test`) |
 | Tecnologia | Node.js / TypeScript / Aedes MQTT broker (MQTT 3.1.1) / MQTT over WebSockets (ws) / TLS and mutual TLS (optional) |
 | Destino | O Raspberry Pi CM5 de uma célula HYDRA-UMC |
 | Em hardware real | Não aplicável: nada aqui corre em hardware |
@@ -55,7 +55,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Área | Estado | O que significa aqui |
 |---|---|---|
 | Software | 🟡 | Funciona para o seu propósito principal; a verificação de honestidade acima lista o que ainda falta |
-| Testes | 🟢 | 173 testes automáticos, executados a cada alteração |
+| Testes | 🟢 | 187 testes automáticos, executados a cada alteração |
 | Hardware real | 🟢 | Não aplicável: nada aqui corre em hardware |
 | Interface e protocolos | 🟡 | As rotas ou mensagens que oferece estão documentadas e testadas com um cliente; ainda nem todos os clientes as usaram |
 | Integração | 🟡 | As suas mensagens e rotas são verificadas contra os contratos partilhados do SDK; ainda não funcionou em conjunto com o equipamento real |
@@ -144,7 +144,7 @@ npm start
 
 ## 🧪 Testes
 
-173 testes automáticos correm com `npm test`. Não precisam de hardware nem de nada fora desta máquina.
+187 testes automáticos correm com `npm test`. Não precisam de hardware nem de nada fora desta máquina.
 
 A CI executa `HYDRA_UMC_CI=1 python tools/ci_validate.py`, que verifica o manifesto, os documentos, os oito README e as imagens.
 
