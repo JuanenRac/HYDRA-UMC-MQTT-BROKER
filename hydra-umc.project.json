@@ -26,5 +26,8 @@
   },
   "service": {
     "port": 1883
-  }
+  },
+  "depends_on": [
+    "HYDRA-UMC-GATEWAY-INDUSTRIAL"
+  ]
 }
