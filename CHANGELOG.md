@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The build test of the repository compiles only on CI or when allowed:** for the stacks that compile (`rust`, `go`, `android`, `flutter`, `firmware-c`), `tools/build_test.py` prints `BUILD_TEST=SKIPPED` with exit status 2 on a plain PC, never a pass; `ALLOW_LOCAL_BUILD=1` allows it and a CI runner always may. The `python` and `node` stacks are not locked.
+
 ## [0.2.0] - Announcement of the broker on the local network, Home Assistant discovery for the bridges and a documented access list for the swarm topics
 
 - **The broker can announce itself with mDNS, off by default:** `MQTT_MDNS=1` announces `_mqtt._tcp` (and `_secure-mqtt._tcp` with TLS and `_mqtt-ws._tcp` with the WebSocket listener) once the listeners are up, with only the product, the version and whether TLS and sign-in are on in the text; `MQTT_MDNS_NAME` changes the name. A network without multicast leaves the broker running and the log says which service could not be announced, and the announcement is withdrawn on stop. Any switch other than `1` or `0` stops the start.
