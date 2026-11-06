@@ -197,3 +197,8 @@ can scope every bridge to publish only inside its own
 `hydra/bridges/<name>/#` and subscribe only to its own `hydra/bridges/
 <name>/cmd/#` - see `.env.example`'s own `MQTT_ACL_JSON` for a real
 example covering all five.
+
+The server needs a rule of its own once the ACL is on: its gateway to the bridges connects with a client ID that starts with `hydra-umc-gateway-`,
+subscribes to `state`, `availability`, `health` and `cmd/+/result` of every bridge, and publishes the default verbs (`status`, `stop`, `pause`,
+`resume`), the signed `settings` of a bridge and the status of the gateway. `.env.example` has that element; `tests/bridge-acl.test.ts` checks it against
+the topics the gateway uses, so it cannot publish on the job topic or on what a bridge itself says.

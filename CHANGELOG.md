@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **An ACL element for the server:** `.env.example` and the bridge topics guide give the rule of the gateway of the server (it reads the state and the health of every bridge and publishes the default verbs, the signed settings and its own status, nothing else), and a test checks it against the topics the gateway uses.
+
 ## [0.2.1] - Dependencies updated: the npm dependencies move to their latest compatible releases (aedes 1.2, bonjour-service 1.4, ws 8.22, mqtt 5.16, tsx 4.23 and the Node type definitions); TypeScript stays on its current line. (and 1 more changes)
 
 - **Dependencies updated:** the npm dependencies move to their latest compatible releases (aedes 1.2, bonjour-service 1.4, ws 8.22, mqtt 5.16, tsx 4.23 and the Node type definitions); TypeScript stays on its current line.
