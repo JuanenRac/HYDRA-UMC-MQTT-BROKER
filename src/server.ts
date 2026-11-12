@@ -622,7 +622,7 @@ export async function closeBroker(
 // unset (the default) means fully open/unlimited, exactly as before these
 // env vars existed. A malformed MQTT_ACL_JSON fails startup loudly rather
 // than silently running unprotected.
-function loadBrokerOptionsFromEnv(): BuildBrokerOptions {
+export function loadBrokerOptionsFromEnv(): BuildBrokerOptions {
   const options: BuildBrokerOptions = {};
 
   if (process.env.MQTT_ACL_JSON) {
