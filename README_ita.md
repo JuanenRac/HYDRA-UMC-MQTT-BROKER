@@ -18,14 +18,14 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Protocol-MQTT%203.1.1-orange.svg" alt="Protocol">
   <img src="https://img.shields.io/badge/Feature-Pub%20%2F%20Sub%20Telemetry-blue.svg" alt="Feature">
-  <img src="https://img.shields.io/badge/Tests-187%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-192%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.1-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
-**Controllo di onestà - cosa funziona davvero oggi:** il trasporto del broker (`src/server.ts`), l'ACL dei topic (`src/acl.ts`), e l'autenticazione CONNECT (`src/auth.ts`) sono reali e testati (187 test superati in 12 file), e `tsc --noEmit` è pulito. Non sono test unitari isolati contro interni simulati - `tests/server.test.ts` collega una vera libreria client `mqtt` tramite un vero socket TCP a un vero broker Aedes in esecuzione, ed è così che è stato trovato un vero bug (il passaggio `broker.listen()` di Aedes 1.x saltato, bloccando silenziosamente ogni CONNECT). Il listener MQTT-su-WebSocket e il limite di dimensione del payload funzionano allo stesso modo: reali, opzionali e testati contro il broker. I topic `hydra/swarm/...` sono pubblicati dal bridge MQTT di HYDRA-UMC-SERVER (disattivato di default; il suo `docs/MQTT_BRIDGE.md`) e i topic `hydra/bridges/<name>/...` dai 5 bridge di macchine esterne; `tests/discovery-broker.test.ts` esegue i topic swarm con l'ACL proposta contro un broker reale. L'annuncio mDNS e le configurazioni Home Assistant dei bridge sono reali ma opzionali e disattivate di default (`MQTT_MDNS=1`, `MQTT_HOME_ASSISTANT=1`); sono verificate con un broker reale e una rete simulata, non su una rete reale con multicast né con un Home Assistant reale. Vedi `CHANGELOG.md` per ciò che è stato consegnato esattamente finora.
+**Controllo di onestà - cosa funziona davvero oggi:** il trasporto del broker (`src/server.ts`), l'ACL dei topic (`src/acl.ts`), e l'autenticazione CONNECT (`src/auth.ts`) sono reali e testati (192 test superati in 12 file), e `tsc --noEmit` è pulito. Non sono test unitari isolati contro interni simulati - `tests/server.test.ts` collega una vera libreria client `mqtt` tramite un vero socket TCP a un vero broker Aedes in esecuzione, ed è così che è stato trovato un vero bug (il passaggio `broker.listen()` di Aedes 1.x saltato, bloccando silenziosamente ogni CONNECT). Il listener MQTT-su-WebSocket e il limite di dimensione del payload funzionano allo stesso modo: reali, opzionali e testati contro il broker. I topic `hydra/swarm/...` sono pubblicati dal bridge MQTT di HYDRA-UMC-SERVER (disattivato di default; il suo `docs/MQTT_BRIDGE.md`) e i topic `hydra/bridges/<name>/...` dai 5 bridge di macchine esterne; `tests/discovery-broker.test.ts` esegue i topic swarm con l'ACL proposta contro un broker reale. L'annuncio mDNS e le configurazioni Home Assistant dei bridge sono reali ma opzionali e disattivate di default (`MQTT_MDNS=1`, `MQTT_HOME_ASSISTANT=1`); sono verificate con un broker reale e una rete simulata, non su una rete reale con multicast né con un Home Assistant reale. Vedi `CHANGELOG.md` per ciò che è stato consegnato esattamente finora.
 
 ---
 
@@ -39,7 +39,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Versione | `0.2.1` |
 | Maturità | Funzionale |
-| Test | 187 (`npm test`) |
+| Test | 192 (`npm test`) |
 | Tecnologia | Node.js / TypeScript / Aedes MQTT broker (MQTT 3.1.1) / MQTT over WebSockets (ws) / TLS and mutual TLS (optional) |
 | Destinazione | Il Raspberry Pi CM5 di una cella HYDRA-UMC |
 | Su hardware reale | Non applicabile: nulla qui gira su hardware |
@@ -55,7 +55,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | Area | Stato | Cosa significa qui |
 |---|---|---|
 | Software | 🟡 | Funziona per il suo scopo principale; la verifica di onestà qui sopra elenca ciò che manca ancora |
-| Test | 🟢 | 187 test automatici, eseguiti a ogni modifica |
+| Test | 🟢 | 192 test automatici, eseguiti a ogni modifica |
 | Hardware reale | 🟢 | Non applicabile: nulla qui gira su hardware |
 | Interfaccia e protocolli | 🟡 | Le rotte o i messaggi offerti sono documentati e provati con un client; non tutti i client li hanno ancora usati |
 | Integrazione | 🟡 | I suoi messaggi e le sue rotte sono verificati rispetto ai contratti condivisi dell'SDK; non ha ancora funzionato insieme all'apparecchiatura reale |
@@ -146,7 +146,7 @@ npm start
 
 ## 🧪 Test
 
-187 test automatici si eseguono con `npm test`. Non richiedono hardware né nulla al di fuori di questa macchina.
+192 test automatici si eseguono con `npm test`. Non richiedono hardware né nulla al di fuori di questa macchina.
 
 La CI esegue `HYDRA_UMC_CI=1 python tools/ci_validate.py`, che controlla il manifesto, i documenti, gli otto README e le immagini.
 
