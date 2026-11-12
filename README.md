@@ -90,6 +90,8 @@ It implements the MQTT 3.1.1 standard (via Aedes, verified live - see Architectu
 
 **HYDRA-UMC-MQTT-BROKER** is the message hub of the ecosystem: an MQTT 3.1.1 broker (Aedes) with optional per-client authentication and topic ACLs, between dashboards, home-automation systems and the machine bridges (`HYDRA-UMC-BRIDGE-*`) and `HYDRA-UMC-SERVER`. It routes messages; the safety decision stays with the receiver.
 
+> **Platform:** where this README says CM5, it means the pilot bench that runs today; the target platform of HYDRA-UMC is an NVIDIA Jetson Orin NX 16 GB, a design that has not been built or tested.
+
 ## 🏛️ Architecture
 
 <p align="center">

@@ -93,6 +93,8 @@ Assistant）能够订阅机器人遥测数据并发布指令。
 
 **HYDRA-UMC-MQTT-BROKER** 是生态系统的消息中心：一个 MQTT 3.1.1 代理（Aedes），支持可选的按客户端认证和主题 ACL，位于仪表板、家居自动化、机器桥接（`HYDRA-UMC-BRIDGE-*`）与 `HYDRA-UMC-SERVER` 之间。它只转发消息；安全决定仍在接收方。
 
+> **平台：** 本 README 中的 CM5 指的是目前正在运行的试验台；HYDRA-UMC 的目标平台是 NVIDIA Jetson Orin NX 16 GB，这是尚未制造或测试的设计。
+
 ## 🏛️ 架构
 
 <p align="center">
