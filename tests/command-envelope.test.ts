@@ -15,7 +15,7 @@ import mqtt, { type MqttClient } from "mqtt";
 import { buildBroker } from "../src/server.js";
 import { commandEnvelopeProblem, isCommandJobTopic } from "../src/commands.js";
 
-const TEST_PORT = 41894;
+const TEST_PORT = 21894;
 const TOPIC = "hydra/bridges/cnc/cmd/job";
 const NOW = 1_767_261_600_000;
 const SIGNATURE = "a".repeat(64);

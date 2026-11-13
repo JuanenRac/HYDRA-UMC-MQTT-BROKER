@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The fixed ports of the tests are below the range the system hands out to outgoing connections:** a port in that range could already be the local end of a client socket of another test file running at the same time, which failed the metrics tests with "address already in use" now and then.
 - **Tests of the start options and of the version:** the options read from the environment (`loadBrokerOptionsFromEnv`, now exported for the tests) are tested at the edges of every number, for the TLS files, the allowed origins, the command envelope, the retained time to live, the addresses, the rules and a production start without protection; the version read from package.json is tested with a missing, damaged or empty file. No behaviour changes.
 - **README: the platform statement:** a note says that where the README speaks of the CM5 it means the pilot bench that runs today, and that the target platform of HYDRA-UMC, an NVIDIA Jetson Orin NX 16 GB, is a design that has not been built or tested.
 - **An ACL element for the server:** `.env.example` and the bridge topics guide give the rule of the gateway of the server (it reads the state and the health of every bridge and publishes the default verbs, the signed settings and its own status, nothing else), and a test checks it against the topics the gateway uses.

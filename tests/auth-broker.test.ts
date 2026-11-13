@@ -15,7 +15,7 @@ import mqtt, { type IClientOptions, type MqttClient } from "mqtt";
 import { buildBroker } from "../src/server.js";
 import type { AclRule } from "../src/acl.js";
 
-const TEST_PORT = 41885;
+const TEST_PORT = 21885;
 const CREDENTIALS = [{ username: "robot-1", password: "test-secret", clientIdPrefix: "robot-" }];
 
 let broker: Aedes;
@@ -101,7 +101,7 @@ describe("authentication identity is bound through to real ACL enforcement", () 
   // to (not instead of) the file-level beforeEach above, which would
   // otherwise try to bind the shared TEST_PORT a second time before the
   // first broker is closed.
-  const COMBINED_PORT = 41888;
+  const COMBINED_PORT = 21888;
   const RULES: AclRule[] = [
     { clientIdPrefix: "robot-", publish: ["hydra/robots/+/status"], subscribe: [] },
     { clientIdPrefix: "dashboard-", publish: [], subscribe: ["hydra/#"] },
