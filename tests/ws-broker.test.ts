@@ -19,12 +19,12 @@ import type { Aedes } from "aedes";
 import mqtt, { type MqttClient } from "mqtt";
 import { buildBroker } from "../src/server.js";
 
-// 41883/41884/41885 are already taken by server.test.ts/acl-broker.test.ts/
+// 21883/21884/21885 are already taken by server.test.ts/acl-broker.test.ts/
 // auth-broker.test.ts respectively, which vitest runs concurrently in
 // separate workers - picking distinct ports here avoids a real EADDRINUSE
 // race against those sibling test files.
-const TEST_PORT = 41886;
-const TEST_WS_PORT = 41887;
+const TEST_PORT = 21886;
+const TEST_WS_PORT = 21887;
 
 let broker: Aedes;
 let server: Server;

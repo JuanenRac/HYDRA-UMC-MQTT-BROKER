@@ -19,8 +19,8 @@ import mqtt, { type MqttClient } from "mqtt";
 import { buildBroker } from "../src/server.js";
 import { MetricsRegistry } from "../src/metrics.js";
 
-const TEST_PORT = 41890;
-const METRICS_PORT = 41990;
+const TEST_PORT = 21890;
+const METRICS_PORT = 21990;
 
 let broker: Aedes;
 let server: Server;

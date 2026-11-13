@@ -84,7 +84,7 @@ describe("the verified principal", () => {
   });
 });
 
-const TEST_PORT = 41892;
+const TEST_PORT = 21892;
 let broker: Aedes;
 let server: Server;
 const clients: MqttClient[] = [];

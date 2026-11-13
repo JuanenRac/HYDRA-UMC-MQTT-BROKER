@@ -18,7 +18,7 @@ import type { Aedes } from "aedes";
 import mqtt, { type MqttClient } from "mqtt";
 import { buildBroker } from "../src/server.js";
 
-const TEST_PORT = 41889;
+const TEST_PORT = 21889;
 
 let broker: Aedes;
 let server: Server;

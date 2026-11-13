@@ -15,7 +15,7 @@ import mqtt, { type MqttClient } from "mqtt";
 import { buildBroker } from "../src/server.js";
 import type { AclRule } from "../src/acl.js";
 
-const TEST_PORT = 41893;
+const TEST_PORT = 21893;
 
 let broker: Aedes | undefined;
 let server: Server | undefined;

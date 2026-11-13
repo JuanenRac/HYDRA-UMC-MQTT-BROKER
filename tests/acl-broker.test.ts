@@ -17,7 +17,7 @@ import mqtt, { type MqttClient } from "mqtt";
 import { buildBroker, type BuildBrokerOptions } from "../src/server.js";
 import type { AclRule } from "../src/acl.js";
 
-const TEST_PORT = 41884;
+const TEST_PORT = 21884;
 
 const RULES: AclRule[] = [
   { clientIdPrefix: "robot-", publish: ["hydra/robots/+/status"], subscribe: ["hydra/robots/+/command"] },
