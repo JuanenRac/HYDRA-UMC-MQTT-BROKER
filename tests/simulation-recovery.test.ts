@@ -95,6 +95,7 @@ describe("a client that goes silent", () => {
     socket.write(silentConnectPacket("bridge-silent", 1, "hydra/bridges/silent/health", "offline"));
     let closed = false;
     socket.once("close", () => (closed = true));
+    socket.resume(); // read what the broker sends, so that its end of the connection can be seen
     await waitFor(() => topics.includes("hydra/bridges/silent/health=offline"), "the will of the silent bridge", 15000);
     await waitFor(() => closed, "the connection of the silent bridge to be closed", 5000);
     expect(topics).toEqual(["hydra/bridges/silent/health=offline"]);
