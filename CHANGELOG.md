@@ -4,11 +4,16 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+
+## [0.2.2]
+
 - **The SDK pin and the shared tools are up to date:** the SDK dependency names the newest release tag, and the shared tools are the canonical copies again.
 - **The fixed ports of the tests are below the range the system hands out to outgoing connections:** a port in that range could already be the local end of a client socket of another test file running at the same time, which failed the metrics tests with "address already in use" now and then.
 - **Tests of the start options and of the version:** the options read from the environment (`loadBrokerOptionsFromEnv`, now exported for the tests) are tested at the edges of every number, for the TLS files, the allowed origins, the command envelope, the retained time to live, the addresses, the rules and a production start without protection; the version read from package.json is tested with a missing, damaged or empty file. No behaviour changes.
 - **README: the platform statement:** a note says that where the README speaks of the CM5 it means the pilot bench that runs today, and that the target platform of HYDRA-UMC, an NVIDIA Jetson Orin NX 16 GB, is a design that has not been built or tested.
 - **An ACL element for the server:** `.env.example` and the bridge topics guide give the rule of the gateway of the server (it reads the state and the health of every bridge and publishes the default verbs, the signed settings and its own status, nothing else), and a test checks it against the topics the gateway uses.
+
+- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
 
 ## [0.2.1] - Dependencies updated: the npm dependencies move to their latest compatible releases (aedes 1.2, bonjour-service 1.4, ws 8.22, mqtt 5.16, tsx 4.23 and the Node type definitions); TypeScript stays on its current line. (and 1 more changes)
 
