@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Simulation of failure and recovery:** the simulation bench now also runs a client that goes silent after its first packet (declared dead after one and a half keep-alive periods, its will delivered, the connection closed), two clients with one identity (the newer takes over, the older is dropped), a robot that is away while its commands wait (kept in order for a persistent session, dropped for a clean one) and a broker that is restarted under a live fleet (clients reconnect, resubscribe and the traffic resumes). The evidence level is `simulator`; a run on the real bench with a real fleet stays pending.
+
 
 ## [0.2.2]
 
