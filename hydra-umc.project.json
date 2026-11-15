@@ -14,12 +14,12 @@
   ],
   "deployment_target": "cm5",
   "maturity": "functional",
-  "evidence": "host-test",
+  "evidence": "simulator",
   "hardware_bound": false,
   "family": "Industrial Gateway",
   "parent": "HYDRA-UMC-GATEWAY-INDUSTRIAL",
   "build": "npm install && npm run build.",
-  "notes": "Real MQTT broker over real TCP. Optional MQTT CONNECT username/password authentication (MQTT_AUTH_JSON) gives the opt-in per-client-ID-prefix topic ACL (MQTT_ACL_JSON) a verified session identity; ACL scope checks prevent wildcard SUBSCRIBE escalation. An optional MAX_PAYLOAD_BYTES cap is enforced on every PUBLISH. An optional retainedTtlMs/MQTT_RETAINED_TTL_MS actively expires a retained message older than the limit instead of retaining it forever. All controls are verified with real Aedes and MQTT clients, not only unit math. Evidence is host-test: the automated test suite runs in CI on the host; nothing here has run against a simulator bench or real hardware.",
+  "notes": "Real MQTT broker over real TCP. Optional MQTT CONNECT username/password authentication (MQTT_AUTH_JSON) gives the opt-in per-client-ID-prefix topic ACL (MQTT_ACL_JSON) a verified session identity; ACL scope checks prevent wildcard SUBSCRIBE escalation. An optional MAX_PAYLOAD_BYTES cap is enforced on every PUBLISH. An optional retainedTtlMs/MQTT_RETAINED_TTL_MS actively expires a retained message older than the limit instead of retaining it forever. All controls are verified with real Aedes and MQTT clients, not only unit math. Evidence is simulator: the automated test suite runs in CI on the host, and a simulation bench runs the broker with a simulated fleet that goes silent, takes over identities, is away and returns, and survives a broker restart; nothing here has run on real hardware.",
   "native_version": {
     "file": "package.json",
     "pattern": "\"version\":\\s*\"(\\d+)\\.(\\d+)\\.(\\d+)\""

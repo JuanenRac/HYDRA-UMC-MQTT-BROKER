@@ -38,4 +38,4 @@ jobs:
           PYTHONDONTWRITEBYTECODE: "1"
         run: |
           npm ci
-          npx vitest run tests/simulation-bench.test.ts
+          npx vitest run tests/simulation-bench.test.ts tests/simulation-recovery.test.ts
