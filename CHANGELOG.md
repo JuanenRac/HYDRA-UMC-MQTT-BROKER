@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The SDK pin and the shared tools are up to date:** the SDK dependency names the newest release tag, and the shared tools are the canonical copies again.
 - **The fixed ports of the tests are below the range the system hands out to outgoing connections:** a port in that range could already be the local end of a client socket of another test file running at the same time, which failed the metrics tests with "address already in use" now and then.
 - **Tests of the start options and of the version:** the options read from the environment (`loadBrokerOptionsFromEnv`, now exported for the tests) are tested at the edges of every number, for the TLS files, the allowed origins, the command envelope, the retained time to live, the addresses, the rules and a production start without protection; the version read from package.json is tested with a missing, damaged or empty file. No behaviour changes.
 - **README: the platform statement:** a note says that where the README speaks of the CM5 it means the pilot bench that runs today, and that the target platform of HYDRA-UMC, an NVIDIA Jetson Orin NX 16 GB, is a design that has not been built or tested.
