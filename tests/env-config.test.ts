@@ -177,6 +177,16 @@ describe("the retained messages", () => {
   it("take a positive time to live", () => {
     expect(load({ MQTT_RETAINED_TTL_MS: "60000" }).retainedTtlMs).toBe(60000);
   });
+
+  it.each(["0", "-1", "1.5", "many"])("refuse a cap of %s topics", (value) => {
+    expect(exitCodeOf({ MQTT_RETAINED_MAX_TOPICS: value })).toBe(1);
+    expect(errors.join("\n")).toContain("MQTT_RETAINED_MAX_TOPICS must be a positive integer");
+  });
+
+  it("take a positive cap, and have none by default", () => {
+    expect(load({}).retainedMaxTopics).toBeUndefined();
+    expect(load({ MQTT_RETAINED_MAX_TOPICS: "500" }).retainedMaxTopics).toBe(500);
+  });
 });
 
 describe("the addresses", () => {

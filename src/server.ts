@@ -89,6 +89,8 @@ export interface BuildBrokerOptions {
    * forever. Omitted (the default) means unlimited retained lifetime,
    * exactly as before this option existed. */
   retainedTtlMs?: number;
+  /** Opt-in cap on the number of topics that may hold a retained message. A retained PUBLISH on a topic that holds none yet is refused once the cap is reached; a new value for a topic that already holds one, and a clearing (empty) message, are always accepted. Omitted (the default) means no cap, exactly as before this option existed. */
+  retainedMaxTopics?: number;
   /** Opt-in: a PUBLISH to `hydra/bridges/<name>/cmd/job` must carry the envelope of a signed command (`issued_at_ms`, `expires_in_ms`, a 64-digit `signature`), must be current and must not be retained, or it is refused before any bridge sees it. The broker does not check the signature (the key is shared by the sender and the bridge only; the bridge does), it only stops what is unsigned, expired, future-dated, too long-lived or retained. Omitted (the default) leaves the command topics as they were; `{}` turns it on with the default limits. */
   commandEnvelope?: CommandEnvelopeOptions;
   /** Opt-in MQTT-over-WebSocket listener, alongside the existing plain-TCP
@@ -268,6 +270,12 @@ export async function buildBroker(
   ) {
     throw new RangeError("retainedTtlMs must be a positive safe integer");
   }
+  if (
+    options.retainedMaxTopics !== undefined &&
+    (!Number.isSafeInteger(options.retainedMaxTopics) || options.retainedMaxTopics <= 0)
+  ) {
+    throw new RangeError("retainedMaxTopics must be a positive safe integer");
+  }
   if (options.commandEnvelope !== undefined) validateCommandEnvelopeOptions(options.commandEnvelope);
   for (const [name, value] of [
     ["connectTimeoutMs", options.connectTimeoutMs],
@@ -285,6 +293,11 @@ export async function buildBroker(
   // set - a caller can read `metrics.snapshot()` directly (as tests below
   // do) even with no HTTP listener running.
   const metrics = new MetricsRegistry();
+  // The topics that hold a retained message right now (kept for the cap and the gauge).
+  const retainedTopics = new Set<string>();
+  metrics.setRetainedTopicsSource(() => retainedTopics.size);
+  const hasPayload = (packet: { payload?: unknown }): boolean =>
+    Buffer.isBuffer(packet.payload) ? packet.payload.length > 0 : Buffer.byteLength(String(packet.payload ?? "")) > 0;
   // maxClientsIdLength: MQTT 3.1 caps a client ID at 23 characters and Aedes enforces
   // that for protocol level 3, which would refuse the bridges' longer IDs.
   const broker = new Aedes({
@@ -355,7 +368,7 @@ export async function buildBroker(
   // (allow everything) unless the caller explicitly provides `acl` and/or
   // `maxPayloadBytes`, so every pre-existing test/behavior against
   // buildBroker(port) with no options is untouched.
-  if (options.acl || options.maxPayloadBytes !== undefined || options.commandEnvelope) {
+  if (options.acl || options.maxPayloadBytes !== undefined || options.commandEnvelope || options.retainedMaxTopics !== undefined) {
     broker.authorizePublish = (client, packet, callback) => {
       if (options.maxPayloadBytes !== undefined) {
         const payloadLength = Buffer.isBuffer(packet.payload)
@@ -381,6 +394,17 @@ export async function buildBroker(
           callback(new Error(`command refused: ${problem}`));
           return;
         }
+      }
+      if (
+        options.retainedMaxTopics !== undefined &&
+        packet.retain === true &&
+        hasPayload(packet) &&
+        !retainedTopics.has(packet.topic) &&
+        retainedTopics.size >= options.retainedMaxTopics
+      ) {
+        console.warn(`[HYDRA-UMC-MQTT-BROKER] retained message on '${safeLogId(packet.topic)}' refused: ${options.retainedMaxTopics} topics already hold one`);
+        callback(new Error(`retained limit: ${options.retainedMaxTopics} topics already hold a retained message`));
+        return;
       }
       callback(null);
     };
@@ -432,6 +456,12 @@ export async function buildBroker(
     }
   });
 
+  broker.on("publish", (packet: AedesPublishPacket) => {
+    if (!packet.retain) return;
+    if (hasPayload(packet)) retainedTopics.add(packet.topic);
+    else retainedTopics.delete(packet.topic);
+  });
+
   if (options.retainedTtlMs !== undefined) {
     const ttl = options.retainedTtlMs;
     // Real per-topic "when was this retained state last (re)set" clock -
@@ -461,6 +491,8 @@ export async function buildBroker(
       for (const [topic, setAt] of retainedSetAt) {
         if (now - setAt < ttl) continue;
         retainedSetAt.delete(topic);
+        retainedTopics.delete(topic);
+        metrics.retainedExpired();
         // Dropped straight from the persistence layer. Publishing an empty
         // retained message instead would also be delivered to live
         // subscribers, and a bridge would read that empty message as a fresh
@@ -773,6 +805,15 @@ export function loadBrokerOptionsFromEnv(): BuildBrokerOptions {
   } else if (isProduction(process.env)) {
     // A retained command must not be replayed to every future subscriber for ever.
     options.retainedTtlMs = DEFAULT_PRODUCTION_RETAINED_TTL_MS;
+  }
+
+  if (process.env.MQTT_RETAINED_MAX_TOPICS) {
+    const retainedMaxTopics = Number(process.env.MQTT_RETAINED_MAX_TOPICS);
+    if (!Number.isSafeInteger(retainedMaxTopics) || retainedMaxTopics <= 0) {
+      console.error(`[HYDRA-UMC-MQTT-BROKER] MQTT_RETAINED_MAX_TOPICS must be a positive integer, got: ${process.env.MQTT_RETAINED_MAX_TOPICS}`);
+      process.exit(1);
+    }
+    options.retainedMaxTopics = retainedMaxTopics;
   }
 
   const problems = productionProblems({ ...options, certIdentity: options.tls?.certIdentity }, process.env);

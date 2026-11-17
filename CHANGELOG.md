@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A cap on the topics that hold a retained message, and two metrics for them:** `MQTT_RETAINED_MAX_TOPICS` (the `retainedMaxTopics` option, off by default) refuses a retained message on one more topic once the cap is reached, so a client with a wide publish right cannot grow the memory of the broker without end; a new value for a topic that already holds one and a clearing message are always accepted. The metrics list `hydra_mqtt_retained_topics` (topics that hold one now) and `hydra_mqtt_retained_expired_total` (cleared because they outlived their time to live). A broker test and a test of the options read from the environment cover it.
+
 - **A client id or a topic is written to the log without control characters:** a line break, an escape or another control character in a client id or a topic becomes a `?` and an id longer than 128 characters is cut, so a client that names itself with a line break cannot forge a line of the log; a plain id is written as it was. Unit tests cover it.
 
 - **Simulation of failure and recovery:** the simulation bench now also runs a client that goes silent after its first packet (declared dead after one and a half keep-alive periods, its will delivered, the connection closed), two clients with one identity (the newer takes over, the older is dropped), a robot that is away while its commands wait (kept in order for a persistent session, dropped for a clean one) and a broker that is restarted under a live fleet (clients reconnect, resubscribe and the traffic resumes). The evidence level is `simulator`; a run on the real bench with a real fleet stays pending.

@@ -33,6 +33,8 @@ export interface MetricsSnapshot {
   aclDeniedTotal: number;
   bytesInTotal: number;
   bytesOutTotal: number;
+  retainedTopics: number;
+  retainedExpiredTotal: number;
 }
 
 export class MetricsRegistry {
@@ -41,6 +43,8 @@ export class MetricsRegistry {
   private aclDeniedTotal = 0;
   private closedBytesIn = 0;
   private closedBytesOut = 0;
+  private retainedExpiredTotal = 0;
+  private retainedTopicsSource: () => number = () => 0;
   // Real per-connection byte counts (Node maintains `bytesRead`/
   // `bytesWritten` on every `net.Socket` automatically) - summed live for
   // open sockets and folded into the closed-socket totals once a
@@ -63,6 +67,16 @@ export class MetricsRegistry {
   /** One PUBLISH or SUBSCRIBE refused by the topic ACL. */
   aclDenied(): void {
     this.aclDeniedTotal += 1;
+  }
+
+  /** Where the number of topics that hold a retained message is read from. */
+  setRetainedTopicsSource(source: () => number): void {
+    this.retainedTopicsSource = source;
+  }
+
+  /** One retained message cleared because it outlived its time to live. */
+  retainedExpired(): void {
+    this.retainedExpiredTotal += 1;
   }
 
   /** Starts counting one real connection's bytes in/out. Safe to call for
@@ -98,6 +112,8 @@ export class MetricsRegistry {
       aclDeniedTotal: this.aclDeniedTotal,
       bytesInTotal: this.closedBytesIn + openBytesIn,
       bytesOutTotal: this.closedBytesOut + openBytesOut,
+      retainedTopics: this.retainedTopicsSource(),
+      retainedExpiredTotal: this.retainedExpiredTotal,
     };
   }
 
@@ -123,6 +139,12 @@ export class MetricsRegistry {
       "# HELP hydra_mqtt_bytes_out_total Total bytes written to client connections since startup.",
       "# TYPE hydra_mqtt_bytes_out_total counter",
       `hydra_mqtt_bytes_out_total ${s.bytesOutTotal}`,
+      "# HELP hydra_mqtt_retained_topics Number of topics that hold a retained message.",
+      "# TYPE hydra_mqtt_retained_topics gauge",
+      `hydra_mqtt_retained_topics ${s.retainedTopics}`,
+      "# HELP hydra_mqtt_retained_expired_total Retained messages cleared because they outlived their time to live since startup.",
+      "# TYPE hydra_mqtt_retained_expired_total counter",
+      `hydra_mqtt_retained_expired_total ${s.retainedExpiredTotal}`,
       "",
     ].join("\n");
   }
