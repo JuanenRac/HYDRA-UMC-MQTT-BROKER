@@ -88,3 +88,14 @@ export function transportWarnings(options: { host?: string; tls?: unknown }, env
   if (!options.tls) return [`the plain MQTT listener is bound to ${where} without TLS: credentials and commands travel in the clear${plaintextAllowed(env) ? " (MQTT_ALLOW_PLAINTEXT=1)" : ""}`];
   return [`TLS is on, but the plain MQTT listener is still bound to ${where}: do not publish its port, or bind to 127.0.0.1 and let the TLS port be the only door`];
 }
+
+/**
+ * A client id or a topic as it is written to the log: the control characters (a line break, an escape) become a visible `?` and a long one is cut, so a client that
+ * names itself with a line break cannot forge a line of the log. The text of an id that is plain does not change.
+ */
+export function safeLogId(value: unknown, maxLength = 128): string {
+  const text = typeof value === "string" ? value : String(value ?? "");
+  // eslint-disable-next-line no-control-regex
+  const clean = text.replace(/[\u0000-\u001f\u007f-\u009f  ]/g, "?");
+  return clean.length > maxLength ? `${clean.slice(0, maxLength)}...` : clean;
+}
