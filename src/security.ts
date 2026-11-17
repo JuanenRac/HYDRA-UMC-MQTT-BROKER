@@ -96,6 +96,6 @@ export function transportWarnings(options: { host?: string; tls?: unknown }, env
 export function safeLogId(value: unknown, maxLength = 128): string {
   const text = typeof value === "string" ? value : String(value ?? "");
   // eslint-disable-next-line no-control-regex
-  const clean = text.replace(/[\u0000-\u001f\u007f-\u009f  ]/g, "?");
+  const clean = text.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, "?");
   return clean.length > maxLength ? `${clean.slice(0, maxLength)}...` : clean;
 }
