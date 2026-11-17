@@ -34,7 +34,7 @@ import {
   authenticatedPrefixAsync,
   parseCredentialsConfig,
 } from "./auth.js";
-import { DEFAULT_PRODUCTION_RETAINED_TTL_MS, isProduction, openStartWarnings, productionProblems, transportProblems, transportWarnings } from "./security.js";
+import { DEFAULT_PRODUCTION_RETAINED_TTL_MS, isProduction, openStartWarnings, productionProblems, transportProblems, transportWarnings, safeLogId } from "./security.js";
 import { MetricsRegistry } from "./metrics.js";
 import { BridgeDiscovery, DiscoveryConfigError, loadBonjourPublisher, mdnsServices, parseDiscoveryEnv, startMdns } from "./discovery.js";
 import { type CommandEnvelopeOptions, commandEnvelopeProblem, validateCommandEnvelopeOptions } from "./commands.js";
@@ -412,12 +412,12 @@ export async function buildBroker(
   // live and reacting to real client traffic, not just that the TCP socket
   // is open.
   broker.on("client", (client: Client) => {
-    console.log(`[HYDRA-UMC-MQTT-BROKER] client connected: ${client?.id ?? "(unknown)"}`);
+    console.log(`[HYDRA-UMC-MQTT-BROKER] client connected: ${safeLogId(client?.id ?? "(unknown)")}`);
     metrics.clientConnected();
   });
 
   broker.on("clientDisconnect", (client: Client) => {
-    console.log(`[HYDRA-UMC-MQTT-BROKER] client disconnected: ${client?.id ?? "(unknown)"}`);
+    console.log(`[HYDRA-UMC-MQTT-BROKER] client disconnected: ${safeLogId(client?.id ?? "(unknown)")}`);
     metrics.clientDisconnected();
   });
 
@@ -427,7 +427,7 @@ export async function buildBroker(
     // log/count real client traffic to keep this readable and the metric
     // meaningful.
     if (client) {
-      console.log(`[HYDRA-UMC-MQTT-BROKER] ${client.id} -> ${packet.topic}`);
+      console.log(`[HYDRA-UMC-MQTT-BROKER] ${safeLogId(client.id)} -> ${safeLogId(packet.topic)}`);
       metrics.messagePublished();
     }
   });
