@@ -14,7 +14,7 @@ import mqtt, { type MqttClient } from "mqtt";
 import { buildBroker } from "../src/server.js";
 import type { AclRule } from "../src/acl.js";
 import { authenticatedPrefix, type BrokerCredential } from "../src/auth.js";
-import { anonymousAllowed, isLoopbackHost, openStartWarnings, plaintextAllowed, productionProblems, ruleForPrefix, transportProblems, transportWarnings } from "../src/security.js";
+import { anonymousAllowed, isLoopbackHost, openStartWarnings, overlappingPrefixes, plaintextAllowed, productionProblems, ruleForPrefix, transportProblems, transportWarnings } from "../src/security.js";
 
 const STRONG = "k3Rr-9vQp-LmN2-xZ7w-Tb4e";
 const CREDENTIALS: BrokerCredential[] = [
@@ -59,6 +59,29 @@ describe("what a production start refuses", () => {
     expect(uncovered).toMatch(/no ACL rule covers/);
     const everyone = productionProblems({ credentials: CREDENTIALS, acl: [{ clientIdPrefix: "", publish: ["#"], subscribe: ["#"] }, ...RULES] }, PRODUCTION).join("\n");
     expect(everyone).toMatch(/empty clientIdPrefix/);
+  });
+
+  it("refuses credentials whose client ID prefixes overlap, unless that is asked for", () => {
+    const credentials: BrokerCredential[] = [
+      { username: "wide", password: STRONG, clientIdPrefix: "bridge-" },
+      { username: "cnc", password: "another-long-secret-for-cnc-1", clientIdPrefix: "bridge-cnc-" },
+    ];
+    const problems = productionProblems({ credentials, acl: RULES }, PRODUCTION);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/'bridge-' of 'wide' covers 'bridge-cnc-' of 'cnc'/);
+    expect(productionProblems({ credentials: [...credentials].reverse(), acl: RULES }, PRODUCTION)).toEqual(problems);
+    expect(productionProblems({ credentials, acl: RULES }, { ...PRODUCTION, MQTT_ALLOW_OVERLAPPING_PREFIXES: "1" })).toEqual([]);
+    expect(openStartWarnings({ credentials, acl: RULES })).toEqual(problems);
+  });
+
+  it("lets several credentials share one identity, and keeps separate identities", () => {
+    const shared: BrokerCredential[] = [
+      { username: "robot-a", password: STRONG, clientIdPrefix: "bridge-" },
+      { username: "robot-b", password: "another-long-secret-for-b-12", clientIdPrefix: "bridge-" },
+    ];
+    expect(overlappingPrefixes(shared)).toEqual([]);
+    expect(overlappingPrefixes(CREDENTIALS)).toEqual([]);
+    expect(overlappingPrefixes([])).toEqual([]);
   });
 
   it("says what an open start leaves unprotected", () => {

@@ -82,7 +82,7 @@ Assistant）能够订阅机器人遥测数据并发布指令。
 * 📏 **载荷大小限制：** 对 PUBLISH 载荷大小的真实、可选的上限，可通过 `MAX_PAYLOAD_BYTES` 配置。*(已实现)*
 * ⚡ **WebSocket 支持：** 面向浏览器端客户端的 MQTT over WebSocket——同一个 broker 实例上真实存在、可选启用的第二个监听器，与现有的纯 TCP 监听器并存(`wsPort` 选项 / `MQTT_WS_PORT` 环境变量，默认端口 8083)。*（已实现）*
 * ⏳ **保留消息过期：** 面向保留(retained)消息的真实、可选 TTL(`retainedTtlMs` 选项 / `MQTT_RETAINED_TTL_MS` 环境变量)——超过该期限的保留状态会被主动清除，而不是永远发送给此后的每一个订阅者。*（已实现）*
-* 🛡️ **生产策略：** 生产环境启动（Dockerfile 设置的 `NODE_ENV=production`）在以下情况会拒绝运行：没有 `MQTT_AUTH_JSON` 和 `MQTT_ACL_JSON`、密码少于 16 个字符或为示例值、没有覆盖每个凭据前缀的 ACL 规则；`MQTT_ALLOW_ANONYMOUS=1` 表示有意运行开放的实验室代理。ACL 按凭据所证明的身份（其自身的 `clientIdPrefix`）而不是客户端自选的客户端 ID 来评估；除非 `MQTT_RETAINED_TTL_MS` 另有设置，保留消息 24 小时后过期；`MQTT_BIND_HOST` / `MQTT_METRICS_HOST` 选择监听器绑定的网卡。*（已实现）*
+* 🛡️ **生产策略：** 生产环境启动（Dockerfile 设置的 `NODE_ENV=production`）在以下情况会拒绝运行：没有 `MQTT_AUTH_JSON` 和 `MQTT_ACL_JSON`、密码少于 16 个字符或为示例值、没有覆盖每个凭据前缀的 ACL 规则；`MQTT_ALLOW_ANONYMOUS=1` 表示有意运行开放的实验室代理。ACL 按凭据所证明的身份（其自身的 `clientIdPrefix`）而不是客户端自选的客户端 ID 来评估；除非 `MQTT_RETAINED_TTL_MS` 另有设置，保留消息 24 小时后过期；`MQTT_BIND_HOST` / `MQTT_METRICS_HOST` 选择监听器绑定的网卡。客户端 ID 前缀相互重叠的凭据同样会被拒绝（`MQTT_ALLOW_OVERLAPPING_PREFIXES=1` 可放行）。*（已实现）*
 * 🔏 **签名命令信封（可选）：** 设置 `MQTT_REQUIRE_COMMAND_ENVELOPE=yes` 后，代理会拒绝发往 `hydra/bridges/<name>/cmd/job` 的 PUBLISH：保留的、不是 JSON 的、未签名的（缺少 `issued_at_ms`、`expires_in_ms` 或 64 位 `signature`）、已过期的、签发时间在未来的或有效期过长的，因此它们永远到不了桥接器；签名本身由持有密钥的桥接器校验。默认关闭。 *（已实现）*
 * 🔐 **非回环地址必须使用 TLS：** 当明文 MQTT 监听器对本机以外开放（默认绑定所有接口）且未配置 TLS 时，生产环境启动会拒绝运行；可用 `MQTT_BIND_HOST` 绑定到 `127.0.0.1`、配置 TLS，或用 `MQTT_ALLOW_PLAINTEXT=1` 有意接受受信任的网络。每次启动都会对不在回环地址上的明文监听器发出警告。*(已实现)*
 * 📊 **Prometheus 指标：** 真实、可选的 `GET /metrics` 监听器(`metricsPort` 选项 / `MQTT_METRICS_PORT` 环境变量，默认端口 9883)，以标准 Prometheus 文本格式报告已连接客户端数、收到的消息总数，以及总的进/出字节数。*（已实现）*

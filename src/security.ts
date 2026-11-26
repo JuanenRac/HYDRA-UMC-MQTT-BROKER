@@ -30,6 +30,26 @@ export function ruleForPrefix(rules: readonly AclRule[], prefix: string): AclRul
   return rules.find(rule => prefix.startsWith(rule.clientIdPrefix));
 }
 
+export function overlappingPrefixesAllowed(env: Record<string, string | undefined>): boolean {
+  return (env.MQTT_ALLOW_OVERLAPPING_PREFIXES ?? "").trim() === "1";
+}
+
+/**
+ * The pairs of credentials whose client ID spaces overlap: the prefix of one is the start of the longer prefix of the other, so the first one may connect with the client ID of the
+ * second, which drops its session and takes over what was queued for it. Credentials with the very same prefix share one identity on purpose and are not listed.
+ */
+export function overlappingPrefixes(credentials: readonly BrokerCredential[]): string[] {
+  const found: string[] = [];
+  for (const wide of credentials) {
+    for (const narrow of credentials) {
+      if (narrow.clientIdPrefix.length > wide.clientIdPrefix.length && narrow.clientIdPrefix.startsWith(wide.clientIdPrefix)) {
+        found.push(`the client ID prefix '${wide.clientIdPrefix}' of '${wide.username}' covers '${narrow.clientIdPrefix}' of '${narrow.username}': it could connect with that identity's client ID`);
+      }
+    }
+  }
+  return found;
+}
+
 /** Everything that makes a production configuration unacceptable (empty when it is fine). */
 export function productionProblems(options: { credentials?: readonly BrokerCredential[]; acl?: readonly AclRule[]; certIdentity?: boolean }, env: Record<string, string | undefined>): string[] {
   if (!isProduction(env) || anonymousAllowed(env)) return [];
@@ -49,6 +69,7 @@ export function productionProblems(options: { credentials?: readonly BrokerCrede
   for (const rule of options.acl ?? []) {
     if (rule.clientIdPrefix === "") problems.push("an ACL rule with an empty clientIdPrefix matches every client");
   }
+  if (!overlappingPrefixesAllowed(env)) problems.push(...overlappingPrefixes(options.credentials ?? []));
   return problems;
 }
 
@@ -57,6 +78,7 @@ export function openStartWarnings(options: { credentials?: readonly BrokerCreden
   const warnings: string[] = [];
   if ((!options.credentials || options.credentials.length === 0) && !options.certIdentity) warnings.push("no MQTT_AUTH_JSON: any client can connect, and its ACL identity is a client ID it chose itself");
   if (!options.acl || options.acl.length === 0) warnings.push("no MQTT_ACL_JSON: every client can publish and subscribe to every topic");
+  warnings.push(...overlappingPrefixes(options.credentials ?? []));
   return warnings;
 }
 
