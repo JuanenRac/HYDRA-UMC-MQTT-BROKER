@@ -25,7 +25,7 @@ GPL-3.0-or-later - see LICENSE
 
 ---
 
-**诚实核查 - 今天真正能运行的部分：** broker 传输层(`src/server.ts`)、主题 ACL(`src/acl.ts`)以及 CONNECT 认证(`src/auth.ts`)都是真实的并经过测试(12 个文件共 292 个测试通过），并且 `tsc --noEmit` 检查干净。这些并非针对模拟内部结构的孤立单元测试——`tests/server.test.ts` 通过一个真实的 TCP 套接字，用真实的 `mqtt` 客户端库连接到一个真实运行中的 Aedes broker，一个真实的缺陷正是这样被发现的(Aedes 1.x 的 `broker.listen()` 步骤被跳过，导致每一次 CONNECT 都静默挂起)。MQTT-over-WebSocket 监听器和负载大小限制也是同样的情况：真实、可选，并且经过 broker 级别的测试。`hydra/swarm/...` 主题由 HYDRA-UMC-SERVER 的 MQTT 桥发布（默认关闭；见其 `docs/MQTT_BRIDGE.md`），`hydra/bridges/<name>/...` 主题由 5 个外部机器桥发布；`tests/discovery-broker.test.ts` 在建议的 ACL 下对真实 broker 运行 swarm 主题。mDNS 通告和各桥的 Home Assistant 配置是真实的，但需要手动开启且默认关闭（`MQTT_MDNS=1`、`MQTT_HOME_ASSISTANT=1`）；它们是用真实 broker 和模拟网络验证的，没有在带多播的真实网络或真实的 Home Assistant 上验证。具体已交付的内容请见 `CHANGELOG.md`。
+**诚实核查 - 今天真正能运行的部分：** broker 传输层(`src/server.ts`)、主题 ACL(`src/acl.ts`)以及 CONNECT 认证(`src/auth.ts`)都是真实的并经过测试(23 个文件共 292 个测试通过），并且 `tsc --noEmit` 检查干净。这些并非针对模拟内部结构的孤立单元测试——`tests/server.test.ts` 通过一个真实的 TCP 套接字，用真实的 `mqtt` 客户端库连接到一个真实运行中的 Aedes broker，一个真实的缺陷正是这样被发现的(Aedes 1.x 的 `broker.listen()` 步骤被跳过，导致每一次 CONNECT 都静默挂起)。MQTT-over-WebSocket 监听器和负载大小限制也是同样的情况：真实、可选，并且经过 broker 级别的测试。`hydra/swarm/...` 主题由 HYDRA-UMC-SERVER 的 MQTT 桥发布（默认关闭；见其 `docs/MQTT_BRIDGE.md`），`hydra/bridges/<name>/...` 主题由 5 个外部机器桥发布；`tests/discovery-broker.test.ts` 在建议的 ACL 下对真实 broker 运行 swarm 主题。mDNS 通告和各桥的 Home Assistant 配置是真实的，但需要手动开启且默认关闭（`MQTT_MDNS=1`、`MQTT_HOME_ASSISTANT=1`）；它们是用真实 broker 和模拟网络验证的，没有在带多播的真实网络或真实的 Home Assistant 上验证。具体已交付的内容请见 `CHANGELOG.md`。
 
 ---
 

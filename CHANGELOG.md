@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The README gives the right number of test files** and says that the sign-in of a connection is optional outside production.
+
 - **Overlapping client ID prefixes are refused in production:** two credentials where the `clientIdPrefix` of one is the start of the longer prefix of the other would let the first connect with the client ID of the second, dropping its session; a production start now refuses that (`MQTT_ALLOW_OVERLAPPING_PREFIXES=1` accepts it, a development start warns). Credentials with the very same prefix still share one identity. Unit tests.
 - **A cap on the topics that hold a retained message, and two metrics for them:** `MQTT_RETAINED_MAX_TOPICS` (the `retainedMaxTopics` option, off by default) refuses a retained message on one more topic once the cap is reached, so a client with a wide publish right cannot grow the memory of the broker without end; a new value for a topic that already holds one and a clearing message are always accepted. The metrics list `hydra_mqtt_retained_topics` (topics that hold one now) and `hydra_mqtt_retained_expired_total` (cleared because they outlived their time to live). A broker test and a test of the options read from the environment cover it.
 
